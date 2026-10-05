@@ -1,0 +1,51 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+publish/
+artifacts/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.rsuser
+
+# VS Code (keep shared config)
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Rider
+.idea/
+*.sln.iml
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+
+# Test results & coverage
+TestResults/
+*.trx
+coverage*.xml
+*.coverage
+
+# Logs
+*.log
+
+# Secrets / local config
+appsettings.Development.json
+secrets.json
+.env
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
