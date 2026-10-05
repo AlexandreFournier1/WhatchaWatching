@@ -1,3 +1,9 @@
 <Solution>
+  <Project Path="WhatchaWatching.Application/WhatchaWatching.Application.csproj" />
+  <Project Path="WhatchaWatching.AppHost/WhatchaWatching.AppHost.csproj" />
+  <Project Path="WhatchaWatching.Common/WhatchaWatching.Common.csproj" />
+  <Project Path="WhatchaWatching.Infrastructure/WhatchaWatching.Infrastructure.csproj" />
+  <Project Path="WhatchaWatching.Middleware/WhatchaWatching.Middleware.csproj" />
+  <Project Path="WhatchaWatching.Tests/WhatchaWatching.Tests.csproj" />
   <Project Path="WhatchaWatching/WhatchaWatching.csproj" />
 </Solution>

@@ -1,10 +1,16 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\WhatchaWatching.Application\WhatchaWatching.Application.csproj" />
+    <ProjectReference Include="..\WhatchaWatching.Common\WhatchaWatching.Common.csproj" />
+  </ItemGroup>
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <UserSecretsId>3e07247b-9066-419c-b2b2-f7dd95b6c6fa</UserSecretsId>
   </PropertyGroup>
 
 </Project>

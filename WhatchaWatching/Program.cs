@@ -1,3 +1,4 @@
+using WhatchaWatching.Application;
 using WhatchaWatching.Components;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -5,6 +6,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddApplication(builder.Configuration);
 
 var app = builder.Build();
 
