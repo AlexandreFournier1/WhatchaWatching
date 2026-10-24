@@ -1,57 +1,101 @@
 @page "/register"
+@attribute [ExcludeFromInteractiveRouting]
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@using WhatchaWatching.Infrastructure.Data.Entities
+@inject SignInManager<UserEntity> SignInManager
+@inject UserManager<UserEntity> UserManager
+@inject NavigationManager Navigation
 
 <PageTitle>Create account - WhatchaWatching</PageTitle>
 
 <section class="auth">
     <h1>Create account</h1>
 
-    <form @onsubmit="Submit">
+    <EditForm Model="Input" method="post" OnValidSubmit="RegisterAsync" FormName="register">
+        <DataAnnotationsValidator />
+
         <div class="field">
             <label for="username">Username</label>
-            <input id="username" class="input" type="text" autocomplete="username" required @bind="username" />
+            <InputText id="username" class="input" autocomplete="username" @bind-Value="Input.Username" />
+            <ValidationMessage For="() => Input.Username" />
         </div>
 
         <div class="field">
             <label for="email">Email</label>
-            <input id="email" class="input" type="email" autocomplete="email" required @bind="email" />
+            <InputText id="email" type="email" class="input" autocomplete="email" @bind-Value="Input.Email" />
+            <ValidationMessage For="() => Input.Email" />
         </div>
 
         <div class="field">
             <label for="password">Password</label>
-            <input id="password" class="input" type="password" autocomplete="new-password" required @bind="password" />
+            <InputText id="password" type="password" class="input" autocomplete="new-password" @bind-Value="Input.Password" />
+            <small class="muted">At least 8 characters, including a digit.</small>
+            <ValidationMessage For="() => Input.Password" />
         </div>
 
         <div class="field">
             <label for="confirm">Confirm password</label>
-            <input id="confirm" class="input" type="password" autocomplete="new-password" required @bind="confirm" />
+            <InputText id="confirm" type="password" class="input" autocomplete="new-password" @bind-Value="Input.ConfirmPassword" />
+            <ValidationMessage For="() => Input.ConfirmPassword" />
         </div>
 
-        @if (mismatch)
+        @foreach (var message in errors)
         {
-            <p class="validation-message" role="alert">The passwords do not match.</p>
-        }
-        else if (submitted)
-        {
-            <p class="notice" role="status">Accounts are not available yet.</p>
+            <p class="validation-message" role="alert">@message</p>
         }
 
         <button type="submit" class="btn">Create account</button>
-    </form>
+    </EditForm>
 
-    <p class="switch">Already registered? <a href="login">Log in</a></p>
+    <p class="switch">Already registered? <a href="login@(ReturnQuery)">Log in</a></p>
 </section>
 
 @code {
-    private string username = string.Empty;
-    private string email = string.Empty;
-    private string password = string.Empty;
-    private string confirm = string.Empty;
-    private bool submitted;
-    private bool mismatch;
+    private List<string> errors = [];
 
-    private void Submit()
+    [SupplyParameterFromForm]
+    private RegisterInput Input { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override void OnInitialized() => Input ??= new();
+
+    private string ReturnQuery => ReturnUrl is null ? string.Empty : $"?returnUrl={Uri.EscapeDataString(ReturnUrl)}";
+
+    private async Task RegisterAsync()
     {
-        mismatch = password != confirm;
-        submitted = !mismatch;
+        var user = new UserEntity { UserName = Input.Username.Trim(), Email = Input.Email.Trim() };
+        var result = await UserManager.CreateAsync(user, Input.Password);
+
+        if (!result.Succeeded)
+        {
+            // Identity's messages are written for users ("Username 'x' is already taken.").
+            errors = result.Errors.Select(e => e.Description).ToList();
+            return;
+        }
+
+        await SignInManager.SignInAsync(user, isPersistent: false);
+        Navigation.NavigateTo(LocalUrl.Normalize(ReturnUrl));
+    }
+
+    private sealed class RegisterInput
+    {
+        [Required(ErrorMessage = "Choose a username.")]
+        [StringLength(32, MinimumLength = 3, ErrorMessage = "The username needs 3 to 32 characters.")]
+        [RegularExpression(@"^[A-Za-z0-9._-]+$", ErrorMessage = "Use letters, digits, dots, dashes and underscores only.")]
+        public string Username { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Enter your email.")]
+        [EmailAddress(ErrorMessage = "This does not look like an email address.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Choose a password.")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Type the password again.")]
+        [Compare(nameof(Password), ErrorMessage = "The passwords do not match.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
     }
 }

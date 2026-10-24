@@ -1,36 +1,88 @@
 @page "/login"
+@attribute [ExcludeFromInteractiveRouting]
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@using WhatchaWatching.Infrastructure.Data.Entities
+@inject SignInManager<UserEntity> SignInManager
+@inject UserManager<UserEntity> UserManager
+@inject NavigationManager Navigation
 
 <PageTitle>Log in - WhatchaWatching</PageTitle>
 
 <section class="auth">
     <h1>Log in</h1>
 
-    <form @onsubmit="Submit">
+    <EditForm Model="Input" method="post" OnValidSubmit="LogInAsync" FormName="login">
+        <DataAnnotationsValidator />
+
         <div class="field">
             <label for="email">Email</label>
-            <input id="email" class="input" type="email" autocomplete="email" required @bind="email" />
+            <InputText id="email" type="email" class="input" autocomplete="email" @bind-Value="Input.Email" />
+            <ValidationMessage For="() => Input.Email" />
         </div>
 
         <div class="field">
             <label for="password">Password</label>
-            <input id="password" class="input" type="password" autocomplete="current-password" required @bind="password" />
+            <InputText id="password" type="password" class="input" autocomplete="current-password" @bind-Value="Input.Password" />
+            <ValidationMessage For="() => Input.Password" />
         </div>
 
-        @if (submitted)
+        <label class="remember">
+            <InputCheckbox @bind-Value="Input.RememberMe" /> Keep me signed in
+        </label>
+
+        @if (error is not null)
         {
-            <p class="notice" role="status">Accounts are not available yet.</p>
+            <p class="validation-message" role="alert">@error</p>
         }
 
         <button type="submit" class="btn">Log in</button>
-    </form>
+    </EditForm>
 
-    <p class="switch">No account yet? <a href="register">Create one</a></p>
+    <p class="switch">No account yet? <a href="register@(ReturnQuery)">Create one</a></p>
 </section>
 
 @code {
-    private string email = string.Empty;
-    private string password = string.Empty;
-    private bool submitted;
+    private string? error;
 
-    private void Submit() => submitted = true;
+    [SupplyParameterFromForm]
+    private LoginInput Input { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override void OnInitialized() => Input ??= new();
+
+    private string ReturnQuery => ReturnUrl is null ? string.Empty : $"?returnUrl={Uri.EscapeDataString(ReturnUrl)}";
+
+    private async Task LogInAsync()
+    {
+        var user = await UserManager.FindByEmailAsync(Input.Email.Trim());
+        var result = user is null
+            ? SignInResult.Failed
+            : await SignInManager.PasswordSignInAsync(user, Input.Password, Input.RememberMe, lockoutOnFailure: true);
+
+        if (result.Succeeded)
+        {
+            Navigation.NavigateTo(LocalUrl.Normalize(ReturnUrl));
+            return;
+        }
+
+        // The same message for an unknown email and a wrong password.
+        error = result.IsLockedOut
+            ? "Too many attempts. Try again in a few minutes."
+            : "The email or the password is wrong.";
+    }
+
+    private sealed class LoginInput
+    {
+        [Required(ErrorMessage = "Enter your email.")]
+        [EmailAddress(ErrorMessage = "This does not look like an email address.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Enter your password.")]
+        public string Password { get; set; } = string.Empty;
+
+        public bool RememberMe { get; set; }
+    }
 }

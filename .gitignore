@@ -52,6 +52,7 @@ desktop.ini
 
 # Claude Code (personal settings stay local)
 .claude/settings.local.json
+.claude/skills/deploy-alwaysdata/config.json
 
 # Visual Studio / tooling backups
 *.Backup.tmp

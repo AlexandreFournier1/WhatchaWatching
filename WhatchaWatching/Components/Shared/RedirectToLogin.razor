@@ -1,0 +1,7 @@
+@using WhatchaWatching.Services
+@inject NavigationManager Navigation
+
+@code {
+    // A full page load: the login page is rendered by the server, not by the circuit.
+    protected override void OnInitialized() => Navigation.NavigateTo(Navigation.GetLoginUrl(), forceLoad: true);
+}

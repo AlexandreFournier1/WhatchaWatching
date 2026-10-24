@@ -15,11 +15,17 @@ public static class DependencyInjection
                 $"Connection string '{DatabaseConstants.CONNECTION_NAME}' is not configured. " +
                 "Set it in user-secrets or the environment variable 'ConnectionStrings__" + DatabaseConstants.CONNECTION_NAME + "'.");
 
+        // Detecting the version connects to the database each time the options are built, until it succeeds once:
+        // while the database is down, every page that uses a service would fail. A configured version avoids that.
+        var configuredVersion = configuration[DatabaseConstants.SERVER_VERSION_KEY];
+
         // A factory gives Blazor Server services short-lived contexts (a circuit-long context is not safe).
         services.AddDbContextFactory<ApplicationDbContext>(options =>
             options.UseMySql(
                 connectionString,
-                ServerVersion.AutoDetect(connectionString),
+                string.IsNullOrWhiteSpace(configuredVersion)
+                    ? ServerVersion.AutoDetect(connectionString)
+                    : ServerVersion.Parse(configuredVersion),
                 mySql => mySql.EnableRetryOnFailure()));
 
         // Identity resolves the context directly, so also expose a scoped one built from the factory.

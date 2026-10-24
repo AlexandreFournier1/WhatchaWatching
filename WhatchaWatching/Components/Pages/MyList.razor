@@ -1,14 +1,17 @@
 @page "/my-list"
-@inject PreviewWatchList WatchList
+@attribute [Authorize]
+@inject IWatchListService WatchList
+@inject ICurrentUser CurrentUser
+@inject ILogger<MyList> Logger
 
 <PageTitle>My List - WhatchaWatching</PageTitle>
 
 <section class="page-section">
     <header class="page-header">
         <h1>My List</h1>
-        @if (!loading)
+        @if (!loading && !failed)
         {
-            <p class="muted fade-in">@WatchList.Items.Count to watch</p>
+            <p class="muted fade-in">@items.Count @(IsFiltered ? "matching" : "to watch")</p>
         }
     </header>
 
@@ -21,7 +24,13 @@
             }
         </div>
     }
-    else if (WatchList.Items.Count == 0)
+    else if (failed)
+    {
+        <EmptyState Title="Your list could not be loaded" Message="Try again in a moment.">
+            <button type="button" class="btn" @onclick="ReloadAsync">Try again</button>
+        </EmptyState>
+    }
+    else if (items.Count == 0 && !IsFiltered)
     {
         <EmptyState Title="Your list is empty" Message="Search for an anime and add it to your list.">
             <a class="btn" href="search">Find something to add</a>
@@ -30,22 +39,22 @@
     else
     {
         <div class="filters">
-            <FilterDropdown Label="Genre" Multiple="true" Options="WatchList.Genres" @bind-Selected="genres" />
-            <FilterDropdown Label="Duration" Options="PreviewWatchList.DurationOptions" @bind-Selected="duration" />
-            <FilterDropdown Label="Sort by" Options="PreviewWatchList.SortOptions" @bind-Selected="sort" />
+            <FilterDropdown Label="Genre" Multiple="true" Options="genreOptions" Selected="genres" SelectedChanged="OnGenresChanged" />
+            <FilterDropdown Label="Duration" Options="FilterOptions.DurationLabels" Selected="duration" SelectedChanged="OnDurationChanged" />
+            <FilterDropdown Label="Sort by" Options="FilterOptions.SortLabels" Selected="sort" SelectedChanged="OnSortChanged" />
         </div>
 
-        @if (Visible.Count == 0)
+        @if (items.Count == 0)
         {
             <EmptyState Title="No match" Message="Nothing in your list matches these filters." />
         }
         else
         {
-            <div class="anime-grid">
-                @foreach (var anime in Visible)
+            <div class="anime-grid @(busy ? "is-busy" : "")" aria-busy="@(busy ? "true" : "false")">
+                @foreach (var anime in items)
                 {
                     <AnimeCard Anime="anime" @key="anime.Id">
-                        <button type="button" class="btn btn-danger btn-sm" @onclick="() => WatchList.Remove(anime.Id)">
+                        <button type="button" class="btn btn-danger btn-sm" @onclick="() => RemoveAsync(anime.Id)">
                             <Icon Name="trash" Size="16" /> Remove
                         </button>
                     </AnimeCard>
@@ -56,35 +65,83 @@
 </section>
 
 @code {
-    // Stays true during prerendering, so the skeleton is part of the first HTML.
+    // Stays true while the page is prerendered: the skeleton is part of the first HTML.
     private bool loading = true;
+    private bool busy;
+    private bool failed;
+    private int userId;
+    private IReadOnlyList<AnimeSummaryDto> items = [];
+    private IReadOnlyList<string> genreOptions = [];
     private IReadOnlyCollection<string> genres = [];
     private IReadOnlyCollection<string> duration = [];
     private IReadOnlyCollection<string> sort = [];
+
+    private bool IsFiltered => genres.Count > 0 || duration.Count > 0;
 
     protected override async Task OnInitializedAsync()
     {
         if (RendererInfo.IsInteractive)
         {
-            await PreviewWatchList.SimulateLatency();
-            loading = false;
+            await ReloadAsync();
         }
     }
 
-    private IReadOnlyList<AnimeSummaryDto> Visible
+    private async Task ReloadAsync()
     {
-        get
-        {
-            var items = WatchList.Items
-                .Where(a => PreviewWatchList.MatchesGenres(a, genres))
-                .Where(a => PreviewWatchList.MatchesDuration(a, duration.FirstOrDefault()));
+        failed = false;
+        busy = true;
 
-            return sort.FirstOrDefault() switch
-            {
-                "Title (A-Z)" => items.OrderBy(a => a.Title).ToList(),
-                "Shortest first" => items.OrderBy(a => a.EpisodeDurationMinutes ?? int.MaxValue).ToList(),
-                _ => items.ToList()
-            };
+        try
+        {
+            userId = await CurrentUser.GetUserIdAsync() ?? throw new InvalidOperationException("Not signed in.");
+            genreOptions = await WatchList.GetGenresAsync(userId);
+            // A filter on a genre that left the list would hide everything.
+            genres = genres.Where(genreOptions.Contains).ToList();
+            items = await WatchList.GetAsync(userId, FilterOptions.ToFilter(genres, duration), FilterOptions.ToSort(sort));
         }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger.LogError(ex, "The watchlist could not be loaded.");
+            failed = true;
+        }
+        finally
+        {
+            loading = false;
+            busy = false;
+        }
+    }
+
+    private async Task OnGenresChanged(IReadOnlyCollection<string> selected)
+    {
+        genres = selected;
+        await ReloadAsync();
+    }
+
+    private async Task OnDurationChanged(IReadOnlyCollection<string> selected)
+    {
+        duration = selected;
+        await ReloadAsync();
+    }
+
+    private async Task OnSortChanged(IReadOnlyCollection<string> selected)
+    {
+        sort = selected;
+        await ReloadAsync();
+    }
+
+    private async Task RemoveAsync(int externalId)
+    {
+        try
+        {
+            await WatchList.RemoveAsync(userId, externalId);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger.LogError(ex, "Anime {ExternalId} could not be removed.", externalId);
+            failed = true;
+            return;
+        }
+
+        await ReloadAsync();
     }
 }

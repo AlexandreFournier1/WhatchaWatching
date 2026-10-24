@@ -1,51 +1,64 @@
 @page "/search"
-@inject PreviewWatchList WatchList
+@inject IAnimeService AnimeService
+@inject IWatchListService WatchList
+@inject ICurrentUser CurrentUser
 @inject NavigationManager Navigation
+@inject ILogger<Search> Logger
 
 <PageTitle>Search - WhatchaWatching</PageTitle>
 
 <section class="page-section">
     <header class="page-header">
         <h1>Search</h1>
-        @if (!string.IsNullOrWhiteSpace(Query) && !loading)
+        @if (!string.IsNullOrWhiteSpace(Query) && !loading && !failed)
         {
-            <p class="muted fade-in">@results.Count result(s) for "@Query"</p>
+            <p class="muted fade-in">@result.TotalItems result(s) for "@Query"</p>
         }
     </header>
 
     @if (loading)
     {
         <div class="anime-grid" aria-busy="true">
-            @for (var i = 0; i < PageSize; i++)
+            @for (var i = 0; i < 6; i++)
             {
                 <AnimeCardSkeleton />
             }
         </div>
     }
+    else if (failed)
+    {
+        <EmptyState Title="The search is not available" Message="The anime service did not answer. Try again in a moment.">
+            <button type="button" class="btn" @onclick="LoadAsync">Try again</button>
+        </EmptyState>
+    }
     else if (string.IsNullOrWhiteSpace(Query))
     {
         <EmptyState Title="Search for an anime" Message="Type a title in the search bar at the top of the page." />
     }
-    else if (results.Count == 0)
+    else if (result.Items.Count == 0)
     {
         <EmptyState Title="No results" Message="Try another title." />
     }
     else
     {
         <div class="anime-grid">
-            @foreach (var anime in pageItems)
+            @foreach (var anime in result.Items)
             {
                 <AnimeCard Anime="anime" @key="anime.Id">
-                    @if (WatchList.Contains(anime.Id))
+                    @if (userId is null)
+                    {
+                        <a class="btn btn-sm" href="@Navigation.GetLoginUrl()">Log in to add</a>
+                    }
+                    else if (listed.Contains(anime.Id))
                     {
                         <button type="button" class="btn btn-ghost btn-sm" title="Remove from my list"
-                                @onclick="() => WatchList.Remove(anime.Id)">
+                                @onclick="() => ToggleAsync(anime.Id)">
                             <Icon Name="check" Size="16" /> In my list
                         </button>
                     }
                     else
                     {
-                        <button type="button" class="btn btn-sm" @onclick="() => WatchList.Add(anime.Id)">
+                        <button type="button" class="btn btn-sm" @onclick="() => ToggleAsync(anime.Id)">
                             <Icon Name="plus" Size="16" /> Add to my list
                         </button>
                     }
@@ -53,17 +66,25 @@
             }
         </div>
 
-        <Pagination Page="CurrentPage" TotalPages="totalPages" PageChanged="GoToPage" />
+        @if (actionFailed)
+        {
+            <p class="validation-message" role="alert">That change could not be saved. Try again in a moment.</p>
+        }
+
+        <Pagination Page="result.Page" TotalPages="result.TotalPages" PageChanged="GoToPage" />
     }
 </section>
 
 @code {
-    private const int PageSize = 6;
+    private static readonly PagedResultDto<AnimeSummaryDto> NoResult = new([], 1, 1, 0);
 
-    private IReadOnlyList<AnimeSummaryDto> results = [];
-    private IReadOnlyList<AnimeSummaryDto> pageItems = [];
-    private int totalPages;
+    // The skeleton is part of the prerendered HTML; the interactive pass then loads for real.
     private bool loading = true;
+    private bool failed;
+    private bool actionFailed;
+    private int? userId;
+    private PagedResultDto<AnimeSummaryDto> result = NoResult;
+    private HashSet<int> listed = [];
 
     [SupplyParameterFromQuery(Name = "q")]
     private string? Query { get; set; }
@@ -71,21 +92,73 @@
     [SupplyParameterFromQuery(Name = "page")]
     private int? PageNumber { get; set; }
 
-    private int CurrentPage => Math.Clamp(PageNumber ?? 1, 1, Math.Max(totalPages, 1));
-
     protected override async Task OnParametersSetAsync()
     {
-        // The skeleton is part of the prerendered HTML; the interactive pass then plays the (fake) loading.
         loading = !string.IsNullOrWhiteSpace(Query);
-        if (loading && RendererInfo.IsInteractive)
+        if (RendererInfo.IsInteractive)
         {
-            await PreviewWatchList.SimulateLatency();
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        failed = false;
+        actionFailed = false;
+
+        try
+        {
+            userId = await CurrentUser.GetUserIdAsync();
+            result = string.IsNullOrWhiteSpace(Query)
+                ? NoResult
+                : await AnimeService.SearchAsync(Query.Trim(), PageNumber ?? 1);
+
+            listed = userId is { } id
+                ? (await WatchList.GetListedIdsAsync(id, result.Items.Select(a => a.Id).ToList())).ToHashSet()
+                : [];
+        }
+        catch (AnimeProviderUnavailableException)
+        {
+            failed = true;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger.LogError(ex, "The search for '{Query}' failed.", Query);
+            failed = true;
+        }
+        finally
+        {
             loading = false;
         }
+    }
 
-        results = string.IsNullOrWhiteSpace(Query) ? [] : WatchList.Search(Query.Trim());
-        totalPages = (int)Math.Ceiling(results.Count / (double)PageSize);
-        pageItems = results.Skip((CurrentPage - 1) * PageSize).Take(PageSize).ToList();
+    private async Task ToggleAsync(int externalId)
+    {
+        if (userId is not { } id)
+        {
+            return;
+        }
+
+        actionFailed = false;
+        try
+        {
+            if (listed.Contains(externalId))
+            {
+                await WatchList.RemoveAsync(id, externalId);
+                listed.Remove(externalId);
+            }
+            else
+            {
+                await WatchList.AddAsync(id, externalId);
+                listed.Add(externalId);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger.LogError(ex, "Anime {ExternalId} could not be added or removed.", externalId);
+            actionFailed = true;
+        }
     }
 
     private void GoToPage(int page) =>

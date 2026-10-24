@@ -242,3 +242,10 @@ a:hover { color: var(--accent-hover); }
         transition-duration: .01ms !important;
     }
 }
+
+/* ---------- Forms and loading ---------- */
+.auth form { display: grid; gap: 1rem; }
+.remember { display: flex; align-items: center; gap: .6rem; color: var(--text-2); font-size: .95rem; }
+.remember input { accent-color: var(--accent); width: 1.1rem; height: 1.1rem; }
+.field small { font-size: .85rem; }
+.is-busy { opacity: .55; pointer-events: none; transition: opacity .2s; }

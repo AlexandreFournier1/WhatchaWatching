@@ -28,6 +28,7 @@
     padding: .25rem 0;
     color: var(--text-2);
     font-size: .95rem;
+    transition: color .15s;
 }
 
 .links ::deep .nav-link:hover,
@@ -56,10 +57,10 @@
     border-radius: var(--radius-sm);
     background: var(--surface);
     color: var(--text-2);
+    transition: border-color .15s;
 }
 
 .search:focus-within { border-color: var(--accent); }
-.search, .icon-button, .user-menu a { transition: border-color .15s, background-color .15s, color .15s; }
 
 .search input {
     flex: 1;
@@ -87,27 +88,26 @@
     background: transparent;
     color: var(--text);
     cursor: pointer;
+    list-style: none;
+    transition: background-color .15s;
 }
 
+.icon-button::-webkit-details-marker { display: none; }
 .icon-button:hover { background: var(--surface); }
 .avatar { background: var(--surface); }
 
+.nav-toggle { position: absolute; opacity: 0; pointer-events: none; }
 .menu-toggle { display: none; }
+.nav-toggle:focus-visible + .menu-toggle { outline: 2px solid var(--accent-2); outline-offset: 2px; }
 
 .user { position: relative; }
-
-.backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 10;
-}
 
 .user-menu {
     position: absolute;
     right: 0;
     top: calc(100% + .5rem);
     z-index: 20;
-    min-width: 11rem;
+    min-width: 12rem;
     padding: .35rem;
     display: grid;
     border: 1px solid var(--border);
@@ -116,14 +116,31 @@
     box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
 }
 
-.user-menu a {
+.user-menu a,
+.user-menu button {
+    display: block;
+    width: 100%;
     padding: .5rem .75rem;
+    border: 0;
     border-radius: var(--radius-sm);
+    background: transparent;
     color: var(--text);
+    font: inherit;
     font-size: .95rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color .15s;
 }
 
-.user-menu a:hover { background: var(--surface-hover); }
+.user-menu a:hover,
+.user-menu button:hover { background: var(--surface-hover); color: var(--text); }
+
+.signed-in {
+    padding: .5rem .75rem;
+    color: var(--text-2);
+    font-size: .875rem;
+    overflow-wrap: anywhere;
+}
 
 @media (max-width: 720px) {
     .topbar-inner { flex-wrap: wrap; gap: .75rem 1rem; }
@@ -140,5 +157,5 @@
         gap: .75rem;
     }
 
-    .links.open { display: flex; }
+    .nav-toggle:checked ~ .links { display: flex; }
 }

@@ -1,5 +1,9 @@
 ﻿@page "/"
-@inject PreviewWatchList WatchList
+@inject IRandomPickerService Picker
+@inject IWatchListService WatchList
+@inject ICurrentUser CurrentUser
+@inject NavigationManager Navigation
+@inject ILogger<Home> Logger
 
 <PageTitle>WhatchaWatching</PageTitle>
 
@@ -7,83 +11,114 @@
     <h1>Whatcha watching today ?</h1>
 
     <div class="actions">
-        <button type="button" class="btn" @onclick="Surprise">Surprise Me</button>
-        <button type="button" class="btn" aria-expanded="@(panel == Panel.Conditions ? "true" : "false")"
+        <button type="button" class="btn" disabled="@loading" @onclick="Surprise">Surprise Me</button>
+        <button type="button" class="btn" aria-expanded="@(showConditions ? "true" : "false")"
                 @onclick="ToggleConditions">Find me something like...</button>
     </div>
 
-    @if (panel == Panel.Conditions)
+    @if (showConditions)
     {
         <div class="conditions fade-in">
             <h2>What's your condition ?</h2>
 
             <div class="filters">
-                <FilterDropdown Label="Genre" Multiple="true" Options="WatchList.Genres"
-                                @bind-Selected="genres" />
-                <FilterDropdown Label="Duration" Options="PreviewWatchList.DurationOptions"
-                                @bind-Selected="duration" />
+                <FilterDropdown Label="Genre" Multiple="true" Options="genreOptions" @bind-Selected="genres" />
+                <FilterDropdown Label="Duration" Options="FilterOptions.DurationLabels" @bind-Selected="duration" />
             </div>
 
-            <button type="button" class="btn" @onclick="Pick">Yeah that's it</button>
+            <button type="button" class="btn" disabled="@loading" @onclick="PickWithConditions">Yeah that's it</button>
         </div>
     }
 
-    @if (panel != Panel.None && (loading || hasPicked))
+    @if (state != State.Idle)
     {
-        <div class="result" aria-live="polite" aria-busy="@(loading ? "true" : "false")">
-            @if (loading)
+        <div class="result" aria-live="polite" aria-busy="@(state == State.Loading ? "true" : "false")">
+            @switch (state)
             {
-                <h2 class="muted fade-in">Looking for something...</h2>
-                <AnimeCardSkeleton Featured="true" />
-            }
-            else if (pick is null)
-            {
-                <EmptyState Title="Nothing to pick from"
-                            Message="@(WatchList.Items.Count == 0 ? "Your list is empty, add something to it first." : "No anime in your list matches these conditions.")">
-                    @if (WatchList.Items.Count == 0)
-                    {
-                        <a class="btn" href="search">Find something to add</a>
-                    }
-                </EmptyState>
-            }
-            else
-            {
-                <h2 class="fade-in">Today you will be watching this :</h2>
+                case State.Loading:
+                    <h2 class="muted fade-in">Looking for something...</h2>
+                    <AnimeCardSkeleton Featured="true" />
+                    break;
 
-                <AnimeCard Anime="pick" Featured="true">
-                    <a class="btn btn-ghost" href="anime/@pick.Id">View details</a>
-                    <button type="button" class="btn btn-ghost" @onclick="Pick">Pick another</button>
-                </AnimeCard>
+                case State.NeedsLogin:
+                    <EmptyState Title="Log in to use your list" Message="The picker chooses among the anime of your list.">
+                        <a class="btn" href="@Navigation.GetLoginUrl()">Log in</a>
+                    </EmptyState>
+                    break;
+
+                case State.Failed:
+                    <EmptyState Title="Something went wrong" Message="Your list could not be read. Try again in a moment.">
+                        <button type="button" class="btn" @onclick="Pick">Try again</button>
+                    </EmptyState>
+                    break;
+
+                case State.Nothing:
+                    <EmptyState Title="Nothing to pick from"
+                                Message="Your list has no anime matching this. Add some, or change the conditions.">
+                        <a class="btn" href="search">Find something to add</a>
+                    </EmptyState>
+                    break;
+
+                case State.Picked when pick is not null:
+                    <h2 class="fade-in">Today you will be watching this :</h2>
+
+                    <AnimeCard Anime="pick" Featured="true">
+                        <a class="btn btn-ghost" href="anime/@pick.Id">View details</a>
+                        <button type="button" class="btn btn-ghost" @onclick="Pick">Pick another</button>
+                    </AnimeCard>
+                    break;
             }
         </div>
     }
 </section>
 
 @code {
-    private enum Panel { None, Surprise, Conditions }
+    private enum State { Idle, Loading, Picked, Nothing, NeedsLogin, Failed }
 
-    private static readonly Random Random = new();
-
-    private Panel panel = Panel.None;
-    private bool hasPicked;
-    private bool loading;
+    private State state = State.Idle;
+    private bool showConditions;
+    private bool loading => state == State.Loading;
     private AnimeSummaryDto? pick;
+    private IReadOnlyList<string> genreOptions = [];
     private IReadOnlyCollection<string> genres = [];
     private IReadOnlyCollection<string> duration = [];
 
     private async Task Surprise()
     {
-        panel = Panel.Surprise;
+        showConditions = false;
         genres = [];
         duration = [];
         await Pick();
     }
 
-    private void ToggleConditions()
+    private async Task ToggleConditions()
     {
-        panel = panel == Panel.Conditions ? Panel.None : Panel.Conditions;
-        hasPicked = false;
+        showConditions = !showConditions;
+        state = State.Idle;
         pick = null;
+
+        if (showConditions)
+        {
+            await LoadGenresAsync();
+        }
+    }
+
+    private Task PickWithConditions() => Pick();
+
+    private async Task LoadGenresAsync()
+    {
+        try
+        {
+            if (await CurrentUser.GetUserIdAsync() is { } userId)
+            {
+                genreOptions = await WatchList.GetGenresAsync(userId);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // The picker will report the problem when it is used.
+            Logger.LogError(ex, "The genres of the watchlist could not be read.");
+        }
     }
 
     private async Task Pick()
@@ -93,22 +128,25 @@
             return;
         }
 
-        loading = true;
-        await PreviewWatchList.SimulateLatency();
-
-        var candidates = WatchList.Items
-            .Where(a => PreviewWatchList.MatchesGenres(a, genres))
-            .Where(a => PreviewWatchList.MatchesDuration(a, duration.FirstOrDefault()))
-            .ToList();
-
-        // Avoid showing the same anime twice in a row when there is a choice.
-        if (candidates.Count > 1 && pick is not null)
+        var userId = await CurrentUser.GetUserIdAsync();
+        if (userId is null)
         {
-            candidates.RemoveAll(a => a.Id == pick.Id);
+            state = State.NeedsLogin;
+            return;
         }
 
-        pick = candidates.Count == 0 ? null : candidates[Random.Next(candidates.Count)];
-        hasPicked = true;
-        loading = false;
+        state = State.Loading;
+        try
+        {
+            var filter = FilterOptions.ToFilter(genres, duration);
+            pick = await Picker.PickAsync(userId.Value, filter, pick?.Id);
+            state = pick is null ? State.Nothing : State.Picked;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger.LogError(ex, "The random pick failed.");
+            pick = null;
+            state = State.Failed;
+        }
     }
 }

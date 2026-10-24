@@ -6,7 +6,7 @@ Guidance for Claude Code when working in this repository.
 
 WhatchaWatching is a Blazor Web App (.NET 10, `net10.0`). It retrieves anime from **Jikan** (and movies/TV series from **TMDB**), lets users build a watchlist stored in MySQL, and offers a random picker with filters to choose what to watch next. See [README.md](README.md) for the overview and [docs/DATA_MODEL.md](docs/DATA_MODEL.md) for the data model.
 
-Status: the UI is built (Home, My List, Search, Anime detail, Login/Register/Account) but runs on placeholder data from `WhatchaWatching/Components/Preview/PreviewWatchList.cs`, to be replaced by real services. The watchlist has no status, rating or notes: it only holds what the user still wants to watch. Services, Jikan/TMDB clients and the Identity setup in the web app are not implemented yet. Check the code (and the "Implementation progress" section of the data model doc) before assuming something exists.
+Status: the app works end to end in code: Jikan client (Middleware), services (`IAnimeService`, `IWatchListService`, `IRandomPickerService`, anime cached in the database for 7 days), and the UI (Home, My List, Search, Anime detail, Login/Register/Account) wired to them with ASP.NET Core Identity accounts. The watchlist has no status, rating or notes: it only holds what the user still wants to watch. Anime are identified by their Jikan id in the services. Not done yet: the TMDB client (movies and TV series), email confirmation (`IEmailSender`), security-stamp revalidation of the auth state. Check the code (and the "Implementation progress" section of the data model doc) before assuming something exists.
 
 Solution file: `WhatchaWatching.slnx` (new XML format).
 
@@ -44,7 +44,8 @@ Clean Architecture. Dependencies flow one way: **Web → Application → (Infras
 
 ### Web app
 
-- **Render mode**: only `AddInteractiveServerComponents()` is registered (Blazor Server, SignalR circuit, no WebAssembly project). A page is interactive only if it sets `@rendermode InteractiveServer` (or it is set in `App.razor`). Check before assuming a component is interactive.
+- **Render mode**: only `AddInteractiveServerComponents()` is registered (Blazor Server, SignalR circuit, no WebAssembly project). `App.razor` renders every page interactively (with prerendering) except pages marked `@attribute [ExcludeFromInteractiveRouting]` (Login, Register, Account, Error): those are rendered by the server only, because they set or read the auth cookie, which a circuit cannot do. Components shared by both kinds (layout, navbar) must not need interactivity: the navbar uses plain links, a GET form, `<details>` and a checkbox. Pages load data only when `RendererInfo.IsInteractive`, so the prerender shows a skeleton instead of calling services twice.
+- **Accounts**: Identity (cookies) is set up in `Program.cs`, with `UserEntity` from Infrastructure (the one place the web project uses an Infrastructure type). `ICurrentUser` (Application) gives the signed-in user id; `[Authorize]` pages redirect anonymous visitors to `/login?returnUrl=...`; sign-out is a POST to `/logout`. Return urls go through `LocalUrl.Normalize` (open-redirect protection).
 - **Component tree**: `Components/App.razor` → `Routes.razor` (Router, `NotFoundPage` = `Pages.NotFound`) → `Layout/MainLayout.razor` → pages in `Components/Pages/`. Shared `@using`s go in `Components/_Imports.razor`.
 - **Errors**: outside Development, `/Error` + HSTS. `UseStatusCodePagesWithReExecute("/not-found")` backs the `NotFound` page.
 - **Styling**: no CSS framework. Design tokens (palette, radii, fonts) are CSS variables in `wwwroot/app.css`, which also holds the shared classes (`.btn`, `.input`, `.card`, `.anime-grid`...). Components use CSS isolation (`*.razor.css`). `ReconnectModal` has a collocated `.razor.js`.
@@ -96,7 +97,7 @@ Rules:
 ## Configuration and secrets
 
 - Never hard-code credentials, connection strings or API keys, and never commit them.
-- Connection string key: `ConnectionStrings:DefaultConnection`. Locally it comes from Aspire (injected automatically) or from user-secrets (the web and Infrastructure projects share one `UserSecretsId`) or from the `ConnectionStrings__DefaultConnection` environment variable.
+- Connection string key: `ConnectionStrings:DefaultConnection`. Optional `Database:ServerVersion` (for example `8.0.36-mysql`) skips the version detection that connects to the database each time options are built until it succeeds once; without it a database outage breaks every page that uses a service. Locally it comes from Aspire (injected automatically) or from user-secrets (the web and Infrastructure projects share one `UserSecretsId`) or from the `ConnectionStrings__DefaultConnection` environment variable.
 - Set a secret with `dotnet user-secrets set "<Key>" "<value>" --project WhatchaWatching`. Do not print or read stored secrets; ask the user instead.
 - Do not read or edit `appsettings.Production*.json`, `.env` files or user-secrets storage.
 

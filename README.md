@@ -4,7 +4,7 @@ WhatchaWatching is a Blazor Web App (.NET 10) that retrieves anime from the [Jik
 
 **Live site:** [https://whatcha-watching.alwaysdata.net](https://whatcha-watching.alwaysdata.net)
 
-> The project is under construction: the UI is built (Home, My List, Search, Anime detail, account pages) but runs on placeholder data (`Components/Preview/PreviewWatchList.cs`). Jikan, the database and authentication are not connected yet.
+> The project is under construction: the app works end to end in code (Jikan search, watchlist, random picker, accounts) but the TMDB client (movies and TV series) and email confirmation are not done yet.
 
 ## Tech stack
 

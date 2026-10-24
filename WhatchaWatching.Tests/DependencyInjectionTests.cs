@@ -2,8 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using WhatchaWatching.Application;
+using WhatchaWatching.Application.Services;
 using WhatchaWatching.Common.Constants;
 using WhatchaWatching.Infrastructure.Data;
+using WhatchaWatching.Middleware.Jikan;
 
 namespace WhatchaWatching.Tests;
 
@@ -34,6 +36,47 @@ public class DependencyInjectionTests
             .AddApplication(BuildConfiguration("Server=localhost;Database=whatchawatching"));
 
         Assert.Contains(services, d => d.ServiceType == typeof(IDbContextFactory<ApplicationDbContext>));
+    }
+
+    [Fact]
+    public void AddApplication_RegistersTheJikanClient()
+    {
+        var services = new ServiceCollection()
+            .AddApplication(BuildConfiguration("Server=localhost;Database=whatchawatching"));
+
+        using var provider = services.BuildServiceProvider();
+
+        Assert.IsType<JikanClient>(provider.GetRequiredService<IJikanClient>());
+    }
+
+    [Fact]
+    public void AddApplication_RegistersTheApplicationServices()
+    {
+        var services = new ServiceCollection()
+            .AddApplication(BuildConfiguration("Server=localhost;Database=whatchawatching"));
+
+        // Not resolved: building the database options connects to MySQL to detect its version.
+        Assert.Contains(services, d => d.ServiceType == typeof(IAnimeService) && d.ImplementationType == typeof(AnimeService));
+        Assert.Contains(services, d => d.ServiceType == typeof(IWatchListService) && d.ImplementationType == typeof(WatchListService));
+        Assert.Contains(services, d => d.ServiceType == typeof(IRandomPickerService) && d.ImplementationType == typeof(RandomPickerService));
+        Assert.Contains(services, d => d.ServiceType == typeof(TimeProvider));
+    }
+
+    [Fact]
+    public void AddApplication_WithAConfiguredServerVersion_DoesNotConnectToTheDatabase()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(
+            [
+                new($"ConnectionStrings:{DatabaseConstants.CONNECTION_NAME}", "Server=127.0.0.1;Port=1;Database=x;Connection Timeout=1"),
+                new(DatabaseConstants.SERVER_VERSION_KEY, "8.0.36-mysql")
+            ])
+            .Build();
+        using var provider = new ServiceCollection().AddApplication(configuration).BuildServiceProvider();
+
+        using var context = provider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>().CreateDbContext();
+
+        Assert.NotNull(context);
     }
 
     [Fact]

@@ -210,13 +210,13 @@ The connection string lives in the web project's user-secrets (`ConnectionString
 
 ### Later
 
-- Identity setup in the web app: `AddIdentityCore` with `UserEntity`, `RequireUniqueEmail`, cookie authentication, the static login/register pages and auth state for the interactive components.
-- An `ICurrentUser` abstraction in Application, so services get the user id without depending on `AuthenticationState`.
 - An `IEmailSender` implementation (a no-op one to start) for email confirmation and password reset.
+- Revalidate the security stamp of the auth state in the circuit (a deleted user keeps a valid cookie until it expires).
+
 
 ## Decisions
 
-- **Authentication:** ASP.NET Core Identity, with an `int` key. The model side is done (step 4). The web app side is still to do.
+- **Authentication:** ASP.NET Core Identity, with an `int` key, cookie authentication, username + email + password (8 characters minimum, one digit, unique email). No email confirmation yet. Done in the web app (`Program.cs`, static Login/Register/Account pages, `ICurrentUser`).
 - **`MediaType` scope:** all four values (Anime, Manga, Movie, TVShow) are kept. Only Anime is populated for now.
 - **No user rating:** the app stays basic. Users do not rate or annotate what they watch, so `WatchListItem` has no `UserScore` or `Notes`. `Media.Score` (the MyAnimeList score from Jikan) is kept, as a filter for the random picker.
 - **No status:** the watchlist is only a "to watch" list. Items are added, then removed once watched, so there is no `WatchListItemStatus`, progress or dates. The random picker draws from the whole list.
@@ -224,5 +224,5 @@ The connection string lives in the web project's user-secrets (`ConnectionString
 ## Database state
 
 - `InitialCreate` (`20261005111804`) was applied to the AlwaysData database `whatcha-watching_database` on 2026-10-05. Further migrations are applied the same way (see [Working with the database](#working-with-the-database)). Be careful: that database is production.
-- `RemoveUserRating` (`20261024142320`) drops `UserScore`, `Notes` and `CK_WatchListItems_UserScore` from `WatchListItems`. **Not applied yet** to AlwaysData.
-- `RemoveWatchListStatus` (`20261024144435`) drops `Status`, `Progress`, `StartDate`, `EndDate` and the index `(UserId, Status)` from `WatchListItems`. **Not applied yet** to AlwaysData.
+- `RemoveUserRating` (`20261024142320`) drops `UserScore`, `Notes` and `CK_WatchListItems_UserScore` from `WatchListItems`. Applied to AlwaysData on 2026-10-24.
+- `RemoveWatchListStatus` (`20261024144435`) drops `Status`, `Progress`, `StartDate`, `EndDate` and the index `(UserId, Status)` from `WatchListItems`. Applied to AlwaysData on 2026-10-24.

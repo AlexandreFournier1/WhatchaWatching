@@ -1,7 +1,11 @@
 @page "/anime/{Id:int}"
-@inject PreviewWatchList WatchList
+@inject IAnimeService AnimeService
+@inject IWatchListService WatchList
+@inject ICurrentUser CurrentUser
+@inject NavigationManager Navigation
+@inject ILogger<AnimeDetail> Logger
 
-<PageTitle>@(anime?.Title ?? "Not found") - WhatchaWatching</PageTitle>
+<PageTitle>@(anime?.Title ?? "Anime") - WhatchaWatching</PageTitle>
 
 <section class="page-section">
     @if (loading)
@@ -18,6 +22,12 @@
                 <div class="line medium shimmer"></div>
             </div>
         </div>
+    }
+    else if (failed)
+    {
+        <EmptyState Title="This anime could not be loaded" Message="The anime service did not answer. Try again in a moment.">
+            <button type="button" class="btn" @onclick="LoadAsync">Try again</button>
+        </EmptyState>
     }
     else if (anime is null)
     {
@@ -65,20 +75,29 @@
                 <p class="synopsis">@(anime.Synopsis ?? "No summary available.")</p>
 
                 <div class="actions">
-                    @if (WatchList.Contains(anime.Id))
+                    @if (userId is null)
                     {
-                        <button type="button" class="btn btn-danger" @onclick="() => WatchList.Remove(anime.Id)">
+                        <a class="btn" href="@Navigation.GetLoginUrl()">Log in to add to my list</a>
+                    }
+                    else if (listed)
+                    {
+                        <button type="button" class="btn btn-danger" @onclick="ToggleAsync">
                             <Icon Name="trash" Size="16" /> Remove from my list
                         </button>
                     }
                     else
                     {
-                        <button type="button" class="btn" @onclick="() => WatchList.Add(anime.Id)">
+                        <button type="button" class="btn" @onclick="ToggleAsync">
                             <Icon Name="plus" Size="16" /> Add to my list
                         </button>
                     }
                     <a class="btn btn-ghost" href="my-list">My List</a>
                 </div>
+
+                @if (actionFailed)
+                {
+                    <p class="validation-message" role="alert">That change could not be saved. Try again in a moment.</p>
+                }
             </div>
         </article>
     }
@@ -86,6 +105,11 @@
 
 @code {
     private AnimeSummaryDto? anime;
+    private int? userId;
+    private bool listed;
+    private bool failed;
+    private bool actionFailed;
+    // The skeleton is part of the prerendered HTML; the interactive pass then loads for real.
     private bool loading = true;
 
     [Parameter]
@@ -93,14 +117,66 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        // The skeleton is part of the prerendered HTML; the interactive pass then plays the (fake) loading.
         loading = true;
         if (RendererInfo.IsInteractive)
         {
-            await PreviewWatchList.SimulateLatency();
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        failed = false;
+        actionFailed = false;
+
+        try
+        {
+            anime = await AnimeService.GetAsync(Id);
+            userId = await CurrentUser.GetUserIdAsync();
+            listed = anime is not null && userId is { } id
+                && (await WatchList.GetListedIdsAsync(id, [Id])).Contains(Id);
+        }
+        catch (AnimeProviderUnavailableException)
+        {
+            failed = true;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger.LogError(ex, "Anime {Id} could not be loaded.", Id);
+            failed = true;
+        }
+        finally
+        {
             loading = false;
         }
+    }
 
-        anime = WatchList.Find(Id);
+    private async Task ToggleAsync()
+    {
+        if (userId is not { } id)
+        {
+            return;
+        }
+
+        actionFailed = false;
+        try
+        {
+            if (listed)
+            {
+                await WatchList.RemoveAsync(id, Id);
+            }
+            else
+            {
+                await WatchList.AddAsync(id, Id);
+            }
+
+            listed = !listed;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger.LogError(ex, "Anime {Id} could not be added or removed.", Id);
+            actionFailed = true;
+        }
     }
 }

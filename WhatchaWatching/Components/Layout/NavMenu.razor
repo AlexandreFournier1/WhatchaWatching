@@ -1,76 +1,44 @@
-﻿@inject NavigationManager Navigation
-
-<header class="topbar">
+﻿<header class="topbar">
     <div class="topbar-inner">
         <a class="brand" href="">WhatchaWatching</a>
 
-        <button type="button" class="icon-button menu-toggle" aria-label="Toggle navigation"
-                aria-expanded="@(menuOpen ? "true" : "false")" @onclick="ToggleMenu">
-            <Icon Name="@(menuOpen ? "x" : "menu")" />
-        </button>
+        @* Nothing here needs the circuit: the login and register pages are rendered by the server, with this same bar. *@
+        <input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation" />
+        <label for="nav-toggle" class="icon-button menu-toggle">
+            <Icon Name="menu" />
+        </label>
 
-        <nav class="links @(menuOpen ? "open" : "")" aria-label="Main">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All" @onclick="CloseAll">Home</NavLink>
-            <NavLink class="nav-link" href="my-list" @onclick="CloseAll">My List</NavLink>
+        <nav class="links" aria-label="Main">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Home</NavLink>
+            <NavLink class="nav-link" href="my-list">My List</NavLink>
         </nav>
 
-        <form class="search" role="search" @onsubmit="Search">
+        <form class="search" role="search" action="search" method="get">
             <Icon Name="search" Size="16" />
-            <input type="search" placeholder="Search something..." aria-label="Search anime"
-                   @bind="query" @bind:event="oninput" />
+            <input type="search" name="q" placeholder="Search something..." aria-label="Search anime" required />
         </form>
 
-        <div class="user">
-            <button type="button" class="icon-button avatar" aria-label="User menu"
-                    aria-expanded="@(userOpen ? "true" : "false")" @onclick="ToggleUser">
+        <details class="user">
+            <summary class="icon-button avatar" aria-label="User menu">
                 <Icon Name="user" />
-            </button>
+            </summary>
 
-            @if (userOpen)
-            {
-                <div class="backdrop" @onclick="CloseAll"></div>
-                <div class="user-menu pop-in">
-                    <a href="login" @onclick="CloseAll">Log in</a>
-                    <a href="register" @onclick="CloseAll">Create account</a>
-                    <a href="account" @onclick="CloseAll">My account</a>
-                </div>
-            }
-        </div>
+            <div class="user-menu pop-in">
+                <AuthorizeView>
+                    <Authorized>
+                        <p class="signed-in">@context.User.Identity?.Name</p>
+                        <a href="account">My account</a>
+                        <form method="post" action="logout">
+                            <AntiforgeryToken />
+                            <button type="submit">Log out</button>
+                        </form>
+                    </Authorized>
+                    <NotAuthorized>
+                        <a href="login">Log in</a>
+                        <a href="register">Create account</a>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+        </details>
     </div>
 </header>
-
-@code {
-    private string query = string.Empty;
-    private bool menuOpen;
-    private bool userOpen;
-
-    private void ToggleMenu()
-    {
-        userOpen = false;
-        menuOpen = !menuOpen;
-    }
-
-    private void ToggleUser()
-    {
-        menuOpen = false;
-        userOpen = !userOpen;
-    }
-
-    private void CloseAll()
-    {
-        menuOpen = false;
-        userOpen = false;
-    }
-
-    private void Search()
-    {
-        var term = query.Trim();
-        if (term.Length == 0)
-        {
-            return;
-        }
-
-        CloseAll();
-        Navigation.NavigateTo($"search?q={Uri.EscapeDataString(term)}");
-    }
-}

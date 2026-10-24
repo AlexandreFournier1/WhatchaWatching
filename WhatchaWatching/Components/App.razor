@@ -26,7 +26,8 @@
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
 
-    // The error page is rendered statically, everything else is interactive.
+    // Pages marked [ExcludeFromInteractiveRouting] (login, register, account, error) are rendered by the server only:
+    // they set or read the auth cookie, which a Blazor circuit cannot do.
     private IComponentRenderMode? PageRenderMode =>
-        HttpContext.Request.Path.StartsWithSegments("/Error") ? null : InteractiveServer;
+        HttpContext.AcceptsInteractiveRouting() ? InteractiveServer : null;
 }

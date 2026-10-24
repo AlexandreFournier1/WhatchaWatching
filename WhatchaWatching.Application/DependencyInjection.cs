@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using WhatchaWatching.Application.Services;
 using WhatchaWatching.Infrastructure;
 using WhatchaWatching.Middleware;
 
@@ -11,6 +13,12 @@ public static class DependencyInjection
     {
         services.AddInfrastructure(configuration);
         services.AddMiddleware();
+
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddScoped<IAnimeService, AnimeService>();
+        services.AddScoped<IWatchListService, WatchListService>();
+        services.AddScoped<IRandomPickerService, RandomPickerService>();
+
         return services;
     }
 }
