@@ -1,0 +1,93 @@
+@page "/search"
+@inject PreviewWatchList WatchList
+@inject NavigationManager Navigation
+
+<PageTitle>Search - WhatchaWatching</PageTitle>
+
+<section class="page-section">
+    <header class="page-header">
+        <h1>Search</h1>
+        @if (!string.IsNullOrWhiteSpace(Query) && !loading)
+        {
+            <p class="muted fade-in">@results.Count result(s) for "@Query"</p>
+        }
+    </header>
+
+    @if (loading)
+    {
+        <div class="anime-grid" aria-busy="true">
+            @for (var i = 0; i < PageSize; i++)
+            {
+                <AnimeCardSkeleton />
+            }
+        </div>
+    }
+    else if (string.IsNullOrWhiteSpace(Query))
+    {
+        <EmptyState Title="Search for an anime" Message="Type a title in the search bar at the top of the page." />
+    }
+    else if (results.Count == 0)
+    {
+        <EmptyState Title="No results" Message="Try another title." />
+    }
+    else
+    {
+        <div class="anime-grid">
+            @foreach (var anime in pageItems)
+            {
+                <AnimeCard Anime="anime" @key="anime.Id">
+                    @if (WatchList.Contains(anime.Id))
+                    {
+                        <button type="button" class="btn btn-ghost btn-sm" title="Remove from my list"
+                                @onclick="() => WatchList.Remove(anime.Id)">
+                            <Icon Name="check" Size="16" /> In my list
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-sm" @onclick="() => WatchList.Add(anime.Id)">
+                            <Icon Name="plus" Size="16" /> Add to my list
+                        </button>
+                    }
+                </AnimeCard>
+            }
+        </div>
+
+        <Pagination Page="CurrentPage" TotalPages="totalPages" PageChanged="GoToPage" />
+    }
+</section>
+
+@code {
+    private const int PageSize = 6;
+
+    private IReadOnlyList<AnimeSummaryDto> results = [];
+    private IReadOnlyList<AnimeSummaryDto> pageItems = [];
+    private int totalPages;
+    private bool loading = true;
+
+    [SupplyParameterFromQuery(Name = "q")]
+    private string? Query { get; set; }
+
+    [SupplyParameterFromQuery(Name = "page")]
+    private int? PageNumber { get; set; }
+
+    private int CurrentPage => Math.Clamp(PageNumber ?? 1, 1, Math.Max(totalPages, 1));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // The skeleton is part of the prerendered HTML; the interactive pass then plays the (fake) loading.
+        loading = !string.IsNullOrWhiteSpace(Query);
+        if (loading && RendererInfo.IsInteractive)
+        {
+            await PreviewWatchList.SimulateLatency();
+            loading = false;
+        }
+
+        results = string.IsNullOrWhiteSpace(Query) ? [] : WatchList.Search(Query.Trim());
+        totalPages = (int)Math.Ceiling(results.Count / (double)PageSize);
+        pageItems = results.Skip((CurrentPage - 1) * PageSize).Take(PageSize).ToList();
+    }
+
+    private void GoToPage(int page) =>
+        Navigation.NavigateTo(Navigation.GetUriWithQueryParameter("page", page));
+}

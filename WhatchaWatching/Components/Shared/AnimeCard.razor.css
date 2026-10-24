@@ -1,0 +1,60 @@
+.anime-card {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+    padding: .75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    transition: border-color .2s, transform .2s, box-shadow .2s;
+    animation: fade-in-up .35s ease backwards;
+}
+
+.head { display: flex; flex-direction: column; gap: .75rem; }
+
+.poster {
+    display: block;
+    aspect-ratio: 2 / 3;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: var(--poster-bg);
+}
+
+.poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.info { display: grid; gap: .35rem; align-content: start; }
+
+h3 { font-size: 1rem; font-weight: 500; }
+h3 a { color: var(--text); }
+h3 a:hover { color: var(--accent); }
+
+.meta { color: var(--text-2); font-size: .875rem; }
+
+.summary { color: var(--text-2); }
+
+.actions { margin-top: auto; display: flex; flex-wrap: wrap; gap: .5rem; }
+.actions ::deep .btn { flex: 1; }
+
+/* Featured: horizontal header with a square poster, summary below. */
+.featured { padding: 1.25rem; gap: 1.25rem; }
+.featured .head { flex-direction: row; gap: 1.25rem; }
+.featured .poster { flex: 0 0 160px; aspect-ratio: 1; }
+.featured h3 { font-size: 1.5rem; font-weight: 400; }
+.featured .meta { font-size: 1rem; }
+
+@media (max-width: 480px) {
+    .featured .head { flex-direction: column; }
+    .featured .poster { flex-basis: auto; width: 100%; max-width: 220px; }
+}
+
+.anime-card:hover {
+    border-color: var(--text-2);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .35);
+}
+
+.poster { transition: opacity .2s; }
+.anime-card:hover .poster { opacity: .92; }
+h3 a { transition: color .15s; }
+
+.featured:hover { transform: none; box-shadow: none; border-color: var(--border); }

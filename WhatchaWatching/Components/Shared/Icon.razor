@@ -1,0 +1,43 @@
+<svg class="icon" width="@Size" height="@Size" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    @switch (Name)
+    {
+        case "search":
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+            break;
+        case "user":
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
+            break;
+        case "chevron-down":
+            <path d="m6 9 6 6 6-6" />
+            break;
+        case "chevron-up":
+            <path d="m6 15 6-6 6 6" />
+            break;
+        case "check":
+            <path d="m5 12 5 5 9-10" />
+            break;
+        case "plus":
+            <path d="M12 5v14M5 12h14" />
+            break;
+        case "trash":
+            <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+            break;
+        case "menu":
+            <path d="M4 6h16M4 12h16M4 18h16" />
+            break;
+        case "x":
+            <path d="M6 6l12 12M18 6 6 18" />
+            break;
+    }
+</svg>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Name { get; set; } = string.Empty;
+
+    [Parameter]
+    public int Size { get; set; } = 20;
+}

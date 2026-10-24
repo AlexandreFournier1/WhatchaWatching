@@ -1,0 +1,30 @@
+@page "/account"
+
+<PageTitle>My account - WhatchaWatching</PageTitle>
+
+<section class="auth">
+    <h1>My account</h1>
+
+    <div class="card form">
+        <div class="field">
+            <label for="username">Username</label>
+            <input id="username" class="input" type="text" readonly placeholder="Not signed in" />
+        </div>
+
+        <div class="field">
+            <label for="email">Email</label>
+            <input id="email" class="input" type="email" readonly placeholder="Not signed in" />
+        </div>
+
+        @if (loggedOut)
+        {
+            <p class="notice" role="status">Accounts are not available yet.</p>
+        }
+
+        <button type="button" class="btn btn-ghost" @onclick="() => loggedOut = true">Log out</button>
+    </div>
+</section>
+
+@code {
+    private bool loggedOut;
+}

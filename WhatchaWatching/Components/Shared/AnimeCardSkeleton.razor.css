@@ -1,0 +1,29 @@
+.skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+    padding: .75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+}
+
+.head { display: flex; flex-direction: column; gap: .75rem; }
+.poster { aspect-ratio: 2 / 3; border-radius: var(--radius-md); background-color: var(--surface-hover); }
+.info { display: grid; gap: .5rem; align-content: start; flex: 1; }
+
+.line { height: .85rem; border-radius: 6px; }
+.title { height: 1.1rem; width: 80%; }
+.short { width: 50%; }
+.medium { width: 70%; }
+.button { height: 2.1rem; border-radius: var(--radius-sm); }
+
+.featured { padding: 1.25rem; gap: 1rem; }
+.featured .head { flex-direction: row; gap: 1.25rem; }
+.featured .poster { flex: 0 0 160px; aspect-ratio: 1; }
+.featured .title { height: 1.6rem; }
+
+@media (max-width: 480px) {
+    .featured .head { flex-direction: column; }
+    .featured .poster { flex-basis: auto; width: 100%; max-width: 220px; }
+}

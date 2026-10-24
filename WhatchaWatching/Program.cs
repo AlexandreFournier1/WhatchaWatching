@@ -8,6 +8,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddApplication(builder.Configuration);
+builder.Services.AddScoped<WhatchaWatching.Components.Preview.PreviewWatchList>();
 
 var app = builder.Build();
 

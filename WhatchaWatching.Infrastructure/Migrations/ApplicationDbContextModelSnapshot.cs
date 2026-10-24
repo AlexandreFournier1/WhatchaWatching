@@ -367,35 +367,14 @@ namespace WhatchaWatching.Infrastructure.Migrations
                     b.Property<DateTime>("AddedAt")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<DateTime?>("EndDate")
-                        .HasColumnType("datetime(6)");
-
                     b.Property<int>("MediaId")
                         .HasColumnType("int");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(2048)
-                        .HasColumnType("varchar(2048)");
-
-                    b.Property<int?>("Progress")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("StartDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime(6)");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
-
-                    b.Property<byte?>("UserScore")
-                        .HasColumnType("tinyint unsigned");
 
                     b.HasKey("Id");
 
@@ -404,12 +383,7 @@ namespace WhatchaWatching.Infrastructure.Migrations
                     b.HasIndex("UserId", "MediaId")
                         .IsUnique();
 
-                    b.HasIndex("UserId", "Status");
-
-                    b.ToTable("WatchListItems", t =>
-                        {
-                            t.HasCheckConstraint("CK_WatchListItems_UserScore", "UserScore IS NULL OR UserScore BETWEEN 1 AND 10");
-                        });
+                    b.ToTable("WatchListItems");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>

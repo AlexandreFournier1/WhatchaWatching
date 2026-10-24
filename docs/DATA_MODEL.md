@@ -55,12 +55,6 @@ erDiagram
         int Id PK
         int UserId FK
         int MediaId FK
-        string Status
-        int Progress
-        int UserScore "1-10"
-        string Notes
-        datetime StartDate
-        datetime EndDate
         datetime AddedAt
         datetime UpdatedAt
     }
@@ -130,14 +124,9 @@ One user's entry for one media.
 | Id | int | no | PK |
 | UserId | int | no | FK → User |
 | MediaId | int | no | FK → Media |
-| Status | `WatchListItemStatus` | no | PlanToWatch, Watching, Completed, Dropped, OnHold. |
-| Progress | int | yes | Episodes watched. Null for movies. |
-| UserScore | tinyint | yes | 1–10. |
-| Notes | string(2048) | yes | |
-| StartDate / EndDate | datetime | yes | |
 | AddedAt / UpdatedAt | datetime (UTC) | no | |
 
-Indexes: unique `(UserId, MediaId)`, so a media can appear once per user; non-unique `(UserId, Status)`, for the random picker (`PlanToWatch` items of a user).
+Indexes: unique `(UserId, MediaId)`, so a media can appear once per user (it also serves lookups by user). The item has no status: the list contains only what the user still wants to watch.
 
 ## Delete behavior
 
@@ -171,9 +160,9 @@ Indexes: unique `(UserId, MediaId)`, so a media can appear once per user; non-un
 
 ### Step 2: configurations (done)
 
-- [x] Enums (`Type`, `Status`, watchlist `Status`) are stored as strings (`HasConversion<string>()`, max length `SMALL_SIZE`).
+- [x] Enums (`Type`, `Status`) are stored as strings (`HasConversion<string>()`, max length `SMALL_SIZE`).
 - [x] Required/nullable settings now match the entities, and every property is configured explicitly.
-- [x] Indexes: unique `(Type, ExternalId)`, `Type` and `Status` on Media. Unique `ExternalId` and unique `Name` on Genre. Unique `Username` and `Email` on User. Unique `(UserId, MediaId)` and `(UserId, Status)` on WatchListItem.
+- [x] Indexes: unique `(Type, ExternalId)`, `Type` and `Status` on Media. Unique `ExternalId` and unique `Name` on Genre. Unique `Username` and `Email` on User. Unique `(UserId, MediaId)` on WatchListItem.
 - [x] `MediaGenre` uses the composite key `(MediaId, GenreId)`.
 - [x] Check constraint `CK_WatchListItems_UserScore`: `UserScore` is null or between 1 and 10.
 - [x] Delete behaviors as in the table above. `Media → WatchListItem` is now `Restrict`.
@@ -229,7 +218,11 @@ The connection string lives in the web project's user-secrets (`ConnectionString
 
 - **Authentication:** ASP.NET Core Identity, with an `int` key. The model side is done (step 4). The web app side is still to do.
 - **`MediaType` scope:** all four values (Anime, Manga, Movie, TVShow) are kept. Only Anime is populated for now.
+- **No user rating:** the app stays basic. Users do not rate or annotate what they watch, so `WatchListItem` has no `UserScore` or `Notes`. `Media.Score` (the MyAnimeList score from Jikan) is kept, as a filter for the random picker.
+- **No status:** the watchlist is only a "to watch" list. Items are added, then removed once watched, so there is no `WatchListItemStatus`, progress or dates. The random picker draws from the whole list.
 
 ## Database state
 
 - `InitialCreate` (`20261005111804`) was applied to the AlwaysData database `whatcha-watching_database` on 2026-10-05. Further migrations are applied the same way (see [Working with the database](#working-with-the-database)). Be careful: that database is production.
+- `RemoveUserRating` (`20261024142320`) drops `UserScore`, `Notes` and `CK_WatchListItems_UserScore` from `WatchListItems`. **Not applied yet** to AlwaysData.
+- `RemoveWatchListStatus` (`20261024144435`) drops `Status`, `Progress`, `StartDate`, `EndDate` and the index `(UserId, Status)` from `WatchListItems`. **Not applied yet** to AlwaysData.

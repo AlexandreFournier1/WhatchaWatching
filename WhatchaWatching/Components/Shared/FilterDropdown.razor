@@ -1,0 +1,86 @@
+<div class="filter">
+    <button type="button" class="trigger @(open ? "open" : "")" aria-haspopup="listbox"
+            aria-expanded="@(open ? "true" : "false")" @onclick="Toggle">
+        <span>@TriggerText</span>
+        <Icon Name="@(open ? "chevron-up" : "chevron-down")" Size="16" />
+    </button>
+
+    @if (open)
+    {
+        <div class="backdrop" @onclick="Close"></div>
+        <ul class="menu pop-in" role="listbox" aria-label="@Label" aria-multiselectable="@(Multiple ? "true" : "false")">
+            @foreach (var option in Options)
+            {
+                var isSelected = Selected.Contains(option);
+                <li>
+                    <button type="button" role="option" class="option" aria-selected="@(isSelected ? "true" : "false")"
+                            @onclick="() => Choose(option)">
+                        @if (Multiple)
+                        {
+                            <span class="checkbox @(isSelected ? "checked" : "")">
+                                @if (isSelected)
+                                {
+                                    <Icon Name="check" Size="14" />
+                                }
+                            </span>
+                        }
+                        <span>@option</span>
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    private bool open;
+
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<string> Options { get; set; } = [];
+
+    /// <summary>Several options can be selected (checkboxes) instead of a single one.</summary>
+    [Parameter]
+    public bool Multiple { get; set; }
+
+    [Parameter]
+    public IReadOnlyCollection<string> Selected { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<IReadOnlyCollection<string>> SelectedChanged { get; set; }
+
+    private string TriggerText => Selected.Count switch
+    {
+        0 => Label,
+        1 => Selected.First(),
+        _ => $"{Label} ({Selected.Count})"
+    };
+
+    private void Toggle() => open = !open;
+
+    private void Close() => open = false;
+
+    private async Task Choose(string option)
+    {
+        HashSet<string> next;
+
+        if (Multiple)
+        {
+            next = [.. Selected];
+            if (!next.Remove(option))
+            {
+                next.Add(option);
+            }
+        }
+        else
+        {
+            // Choosing the current option again clears it.
+            next = Selected.Contains(option) ? [] : [option];
+            open = false;
+        }
+
+        await SelectedChanged.InvokeAsync(next);
+    }
+}

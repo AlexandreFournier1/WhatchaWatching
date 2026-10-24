@@ -1,0 +1,36 @@
+@page "/login"
+
+<PageTitle>Log in - WhatchaWatching</PageTitle>
+
+<section class="auth">
+    <h1>Log in</h1>
+
+    <form @onsubmit="Submit">
+        <div class="field">
+            <label for="email">Email</label>
+            <input id="email" class="input" type="email" autocomplete="email" required @bind="email" />
+        </div>
+
+        <div class="field">
+            <label for="password">Password</label>
+            <input id="password" class="input" type="password" autocomplete="current-password" required @bind="password" />
+        </div>
+
+        @if (submitted)
+        {
+            <p class="notice" role="status">Accounts are not available yet.</p>
+        }
+
+        <button type="submit" class="btn">Log in</button>
+    </form>
+
+    <p class="switch">No account yet? <a href="register">Create one</a></p>
+</section>
+
+@code {
+    private string email = string.Empty;
+    private string password = string.Empty;
+    private bool submitted;
+
+    private void Submit() => submitted = true;
+}

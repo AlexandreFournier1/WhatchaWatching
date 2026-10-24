@@ -1,0 +1,68 @@
+.filter { position: relative; min-width: 12rem; }
+
+.trigger {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    padding: .55rem .85rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text-2);
+    font: inherit;
+    cursor: pointer;
+}
+
+.trigger:hover, .trigger.open { border-color: var(--text-2); }
+.trigger, .option, .checkbox { transition: border-color .15s, background-color .15s, color .15s; }
+
+.backdrop { position: fixed; inset: 0; z-index: 10; }
+
+.menu {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0;
+    right: 0;
+    z-index: 20;
+    margin: 0;
+    padding: .25rem 0;
+    list-style: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+    max-height: 20rem;
+    overflow-y: auto;
+}
+
+.option {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .5rem .85rem;
+    border: 0;
+    background: transparent;
+    color: var(--text-2);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.option:hover { background: var(--surface-hover); color: var(--text); }
+.option[aria-selected="true"] { color: var(--text); }
+
+.checkbox {
+    flex: 0 0 1.25rem;
+    height: 1.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background: var(--text-2);
+    color: #fff;
+}
+
+.checkbox.checked { background: var(--accent); }

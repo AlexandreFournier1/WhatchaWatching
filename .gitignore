@@ -49,3 +49,9 @@ secrets.json
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Claude Code (personal settings stay local)
+.claude/settings.local.json
+
+# Visual Studio / tooling backups
+*.Backup.tmp

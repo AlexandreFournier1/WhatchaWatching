@@ -1,0 +1,26 @@
+.home {
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 4rem 1rem 3rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    text-align: center;
+}
+
+.actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.5rem; }
+
+.conditions, .result {
+    width: 100%;
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.conditions .filters { justify-content: center; margin-bottom: 0; }
+
+.result ::deep .anime-card { width: 100%; text-align: left; }

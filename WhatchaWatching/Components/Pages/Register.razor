@@ -1,0 +1,57 @@
+@page "/register"
+
+<PageTitle>Create account - WhatchaWatching</PageTitle>
+
+<section class="auth">
+    <h1>Create account</h1>
+
+    <form @onsubmit="Submit">
+        <div class="field">
+            <label for="username">Username</label>
+            <input id="username" class="input" type="text" autocomplete="username" required @bind="username" />
+        </div>
+
+        <div class="field">
+            <label for="email">Email</label>
+            <input id="email" class="input" type="email" autocomplete="email" required @bind="email" />
+        </div>
+
+        <div class="field">
+            <label for="password">Password</label>
+            <input id="password" class="input" type="password" autocomplete="new-password" required @bind="password" />
+        </div>
+
+        <div class="field">
+            <label for="confirm">Confirm password</label>
+            <input id="confirm" class="input" type="password" autocomplete="new-password" required @bind="confirm" />
+        </div>
+
+        @if (mismatch)
+        {
+            <p class="validation-message" role="alert">The passwords do not match.</p>
+        }
+        else if (submitted)
+        {
+            <p class="notice" role="status">Accounts are not available yet.</p>
+        }
+
+        <button type="submit" class="btn">Create account</button>
+    </form>
+
+    <p class="switch">Already registered? <a href="login">Log in</a></p>
+</section>
+
+@code {
+    private string username = string.Empty;
+    private string email = string.Empty;
+    private string password = string.Empty;
+    private string confirm = string.Empty;
+    private bool submitted;
+    private bool mismatch;
+
+    private void Submit()
+    {
+        mismatch = password != confirm;
+        submitted = !mismatch;
+    }
+}

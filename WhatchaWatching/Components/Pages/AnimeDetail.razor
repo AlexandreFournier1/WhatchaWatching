@@ -1,0 +1,106 @@
+@page "/anime/{Id:int}"
+@inject PreviewWatchList WatchList
+
+<PageTitle>@(anime?.Title ?? "Not found") - WhatchaWatching</PageTitle>
+
+<section class="page-section">
+    @if (loading)
+    {
+        <div class="detail" aria-busy="true" aria-hidden="true">
+            <div class="poster shimmer"></div>
+
+            <div class="content">
+                <div class="line title shimmer"></div>
+                <div class="line medium shimmer"></div>
+                <div class="line short shimmer"></div>
+                <div class="line shimmer"></div>
+                <div class="line shimmer"></div>
+                <div class="line medium shimmer"></div>
+            </div>
+        </div>
+    }
+    else if (anime is null)
+    {
+        <EmptyState Title="Anime not found" Message="This anime does not exist or is not available.">
+            <a class="btn" href="search">Back to search</a>
+        </EmptyState>
+    }
+    else
+    {
+        <article class="detail fade-in">
+            <div class="poster">
+                @if (anime.ImageUrl is not null)
+                {
+                    <img src="@anime.ImageUrl" alt="@anime.Title" />
+                }
+            </div>
+
+            <div class="content">
+                <h1>@anime.Title</h1>
+
+                <p class="meta">
+                    @if (anime.Year is { } year)
+                    {
+                        <span>@year</span>
+                    }
+                    <span>@AnimeDisplay.Episodes(anime)</span>
+                    <span>@AnimeDisplay.Duration(anime)</span>
+                    @if (anime.Status is not null)
+                    {
+                        <span>@anime.Status</span>
+                    }
+                    @if (anime.Score is { } score)
+                    {
+                        <span class="score" title="MyAnimeList score">&#9733; @score.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)</span>
+                    }
+                </p>
+
+                <div class="chip-list">
+                    @foreach (var genre in anime.Genres)
+                    {
+                        <span class="chip">@genre</span>
+                    }
+                </div>
+
+                <p class="synopsis">@(anime.Synopsis ?? "No summary available.")</p>
+
+                <div class="actions">
+                    @if (WatchList.Contains(anime.Id))
+                    {
+                        <button type="button" class="btn btn-danger" @onclick="() => WatchList.Remove(anime.Id)">
+                            <Icon Name="trash" Size="16" /> Remove from my list
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn" @onclick="() => WatchList.Add(anime.Id)">
+                            <Icon Name="plus" Size="16" /> Add to my list
+                        </button>
+                    }
+                    <a class="btn btn-ghost" href="my-list">My List</a>
+                </div>
+            </div>
+        </article>
+    }
+</section>
+
+@code {
+    private AnimeSummaryDto? anime;
+    private bool loading = true;
+
+    [Parameter]
+    public int Id { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // The skeleton is part of the prerendered HTML; the interactive pass then plays the (fake) loading.
+        loading = true;
+        if (RendererInfo.IsInteractive)
+        {
+            await PreviewWatchList.SimulateLatency();
+            loading = false;
+        }
+
+        anime = WatchList.Find(Id);
+    }
+}

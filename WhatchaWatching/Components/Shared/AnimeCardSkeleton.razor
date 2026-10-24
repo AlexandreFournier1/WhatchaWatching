@@ -1,0 +1,27 @@
+<div class="skeleton fade-in @(Featured ? "featured" : "")" aria-hidden="true">
+    <div class="head">
+        <div class="poster shimmer"></div>
+
+        <div class="info">
+            <div class="line title shimmer"></div>
+            <div class="line short shimmer"></div>
+        </div>
+    </div>
+
+    @if (Featured)
+    {
+        <div class="line shimmer"></div>
+        <div class="line shimmer"></div>
+        <div class="line medium shimmer"></div>
+    }
+    else
+    {
+        <div class="line button shimmer"></div>
+    }
+</div>
+
+@code {
+    /// <summary>Same layout as the featured <see cref="AnimeCard"/>.</summary>
+    [Parameter]
+    public bool Featured { get; set; }
+}

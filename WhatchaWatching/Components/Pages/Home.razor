@@ -1,7 +1,114 @@
 ﻿@page "/"
+@inject PreviewWatchList WatchList
 
-<PageTitle>Home</PageTitle>
+<PageTitle>WhatchaWatching</PageTitle>
 
-<h1>Hello, world!</h1>
+<section class="home">
+    <h1>Whatcha watching today ?</h1>
 
-Welcome to your new app.
+    <div class="actions">
+        <button type="button" class="btn" @onclick="Surprise">Surprise Me</button>
+        <button type="button" class="btn" aria-expanded="@(panel == Panel.Conditions ? "true" : "false")"
+                @onclick="ToggleConditions">Find me something like...</button>
+    </div>
+
+    @if (panel == Panel.Conditions)
+    {
+        <div class="conditions fade-in">
+            <h2>What's your condition ?</h2>
+
+            <div class="filters">
+                <FilterDropdown Label="Genre" Multiple="true" Options="WatchList.Genres"
+                                @bind-Selected="genres" />
+                <FilterDropdown Label="Duration" Options="PreviewWatchList.DurationOptions"
+                                @bind-Selected="duration" />
+            </div>
+
+            <button type="button" class="btn" @onclick="Pick">Yeah that's it</button>
+        </div>
+    }
+
+    @if (panel != Panel.None && (loading || hasPicked))
+    {
+        <div class="result" aria-live="polite" aria-busy="@(loading ? "true" : "false")">
+            @if (loading)
+            {
+                <h2 class="muted fade-in">Looking for something...</h2>
+                <AnimeCardSkeleton Featured="true" />
+            }
+            else if (pick is null)
+            {
+                <EmptyState Title="Nothing to pick from"
+                            Message="@(WatchList.Items.Count == 0 ? "Your list is empty, add something to it first." : "No anime in your list matches these conditions.")">
+                    @if (WatchList.Items.Count == 0)
+                    {
+                        <a class="btn" href="search">Find something to add</a>
+                    }
+                </EmptyState>
+            }
+            else
+            {
+                <h2 class="fade-in">Today you will be watching this :</h2>
+
+                <AnimeCard Anime="pick" Featured="true">
+                    <a class="btn btn-ghost" href="anime/@pick.Id">View details</a>
+                    <button type="button" class="btn btn-ghost" @onclick="Pick">Pick another</button>
+                </AnimeCard>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    private enum Panel { None, Surprise, Conditions }
+
+    private static readonly Random Random = new();
+
+    private Panel panel = Panel.None;
+    private bool hasPicked;
+    private bool loading;
+    private AnimeSummaryDto? pick;
+    private IReadOnlyCollection<string> genres = [];
+    private IReadOnlyCollection<string> duration = [];
+
+    private async Task Surprise()
+    {
+        panel = Panel.Surprise;
+        genres = [];
+        duration = [];
+        await Pick();
+    }
+
+    private void ToggleConditions()
+    {
+        panel = panel == Panel.Conditions ? Panel.None : Panel.Conditions;
+        hasPicked = false;
+        pick = null;
+    }
+
+    private async Task Pick()
+    {
+        if (loading)
+        {
+            return;
+        }
+
+        loading = true;
+        await PreviewWatchList.SimulateLatency();
+
+        var candidates = WatchList.Items
+            .Where(a => PreviewWatchList.MatchesGenres(a, genres))
+            .Where(a => PreviewWatchList.MatchesDuration(a, duration.FirstOrDefault()))
+            .ToList();
+
+        // Avoid showing the same anime twice in a row when there is a choice.
+        if (candidates.Count > 1 && pick is not null)
+        {
+            candidates.RemoveAll(a => a.Id == pick.Id);
+        }
+
+        pick = candidates.Count == 0 ? null : candidates[Random.Next(candidates.Count)];
+        hasPicked = true;
+        loading = false;
+    }
+}
