@@ -5,3 +5,5 @@
     gap: .5rem;
     margin-top: 2rem;
 }
+
+.gap { align-self: center; color: var(--text-2); }

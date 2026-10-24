@@ -22,7 +22,7 @@ public sealed class JikanClient(HttpClient httpClient) : IJikanClient
         var currentPage = Math.Max(page, 1);
 
         var url = $"anime?q={Uri.EscapeDataString(query.Trim())}&page={currentPage}" +
-                  $"&limit={ExternalApiConstants.JIKAN_PAGE_SIZE}&sfw=true";
+                  $"&limit={ExternalApiConstants.SEARCH_PAGE_SIZE}&sfw=true";
         var response = await GetAsync<JikanListResponse<JikanAnime>>(url, cancellationToken);
 
         var items = (response?.Data ?? []).Select(JikanMapper.ToDto).ToList();

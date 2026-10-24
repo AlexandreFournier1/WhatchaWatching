@@ -2,45 +2,84 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using WhatchaWatching.Application.Exceptions;
 using WhatchaWatching.Application.Mappers;
+using WhatchaWatching.Common.Constants;
 using WhatchaWatching.Common.Dtos;
 using WhatchaWatching.Common.Enum;
 using WhatchaWatching.Infrastructure.Data;
 using WhatchaWatching.Infrastructure.Data.Entities;
-using WhatchaWatching.Middleware.Jikan;
+using WhatchaWatching.Middleware;
 
 namespace WhatchaWatching.Application.Services;
 
 public class AnimeService(
-    IJikanClient jikanClient,
+    IAnimeProvider animeProvider,
     IDbContextFactory<ApplicationDbContext> contextFactory,
     TimeProvider timeProvider,
     ILogger<AnimeService> logger) : IAnimeService
 {
-    // Scores and episode counts change slowly: a week-old copy saves a Jikan call.
+    // Scores and episode counts change slowly: a week-old copy saves a provider call.
     private static readonly TimeSpan SyncMaxAge = TimeSpan.FromDays(7);
 
-    public async Task<PagedResultDto<AnimeSummaryDto>> SearchAsync(
+    public async Task<AnimeSearchResultDto> SearchAsync(
         string query, int page, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(query))
         {
-            return new PagedResultDto<AnimeSummaryDto>([], 1, 1, 0);
+            return new AnimeSearchResultDto(new PagedResultDto<AnimeSummaryDto>([], 1, 1, 0), IsLocalOnly: false);
         }
 
         try
         {
-            var result = await jikanClient.SearchAnimeAsync(query, page, cancellationToken);
-
-            return new PagedResultDto<AnimeSummaryDto>(
+            var result = await animeProvider.SearchAnimeAsync(query, page, cancellationToken);
+            var results = new PagedResultDto<AnimeSummaryDto>(
                 result.Items.Select(AnimeMapper.ToSummary).ToList(),
                 result.Page,
                 result.TotalPages,
                 result.TotalItems);
+
+            return new AnimeSearchResultDto(results, IsLocalOnly: false);
         }
-        catch (JikanApiException ex)
+        catch (ExternalApiException ex)
         {
-            throw new AnimeProviderUnavailableException(ex);
+            logger.LogWarning(ex, "No anime provider answered the search, looking in the stored anime.");
+            return await SearchStoredAsync(query.Trim(), page, ex, cancellationToken);
         }
+    }
+
+    /// <summary>The last resort of a search: the anime this site already stored when they were opened or added.</summary>
+    private async Task<AnimeSearchResultDto> SearchStoredAsync(
+        string query, int page, ExternalApiException cause, CancellationToken cancellationToken)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        var matches = context.Media
+            .AsNoTracking()
+            .Where(m => m.Type == MediaType.Anime &&
+                        (m.Title.Contains(query) || (m.OriginalTitle != null && m.OriginalTitle.Contains(query))));
+
+        var total = await matches.CountAsync(cancellationToken);
+        if (total == 0)
+        {
+            // Saying "no results" would be wrong: nobody could look.
+            throw new AnimeProviderUnavailableException(cause);
+        }
+
+        var currentPage = Math.Max(page, 1);
+        var stored = await matches
+            .Include(m => m.MediaGenres)
+            .ThenInclude(mg => mg.Genre)
+            .OrderBy(m => m.Title)
+            .Skip((currentPage - 1) * ExternalApiConstants.SEARCH_PAGE_SIZE)
+            .Take(ExternalApiConstants.SEARCH_PAGE_SIZE)
+            .ToListAsync(cancellationToken);
+
+        var results = new PagedResultDto<AnimeSummaryDto>(
+            stored.Select(AnimeMapper.ToSummary).ToList(),
+            currentPage,
+            (int)Math.Ceiling(total / (double)ExternalApiConstants.SEARCH_PAGE_SIZE),
+            total);
+
+        return new AnimeSearchResultDto(results, IsLocalOnly: true);
     }
 
     public async Task<AnimeSummaryDto?> GetAsync(int externalId, CancellationToken cancellationToken = default)
@@ -58,16 +97,16 @@ public class AnimeService(
         ExternalAnimeDto? external;
         try
         {
-            external = await jikanClient.GetAnimeAsync(externalId, cancellationToken);
+            external = await animeProvider.GetAnimeAsync(externalId, cancellationToken);
         }
-        catch (JikanApiException ex)
+        catch (ExternalApiException ex)
         {
             if (stored is null)
             {
                 throw new AnimeProviderUnavailableException(ex);
             }
 
-            logger.LogWarning(ex, "Jikan is unavailable, serving the stored copy of anime {ExternalId}.", externalId);
+            logger.LogWarning(ex, "No anime provider answered, serving the stored copy of anime {ExternalId}.", externalId);
             return AnimeMapper.ToSummary(stored);
         }
 

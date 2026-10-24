@@ -1,17 +1,17 @@
 using WhatchaWatching.Common.Dtos;
 using WhatchaWatching.Common.Enum;
-using WhatchaWatching.Middleware.Jikan;
+using WhatchaWatching.Middleware;
 
 namespace WhatchaWatching.Tests.TestSupport;
 
-public sealed class FakeJikanClient : IJikanClient
+public sealed class FakeAnimeProvider : IAnimeProvider
 {
     private readonly Dictionary<int, ExternalAnimeDto> _animes = [];
 
     public int GetAnimeCalls { get; private set; }
 
     /// <summary>When set, every call throws it (a Jikan outage).</summary>
-    public JikanApiException? Failure { get; set; }
+    public ExternalApiException? Failure { get; set; }
 
     public static ExternalAnimeDto Anime(
         int id,
@@ -43,7 +43,7 @@ public sealed class FakeJikanClient : IJikanClient
         ["Romance"] = 22
     };
 
-    public FakeJikanClient With(params ExternalAnimeDto[] animes)
+    public FakeAnimeProvider With(params ExternalAnimeDto[] animes)
     {
         foreach (var anime in animes)
         {
@@ -72,13 +72,6 @@ public sealed class FakeJikanClient : IJikanClient
         return Task.FromResult(_animes.GetValueOrDefault(externalId));
     }
 
-    public Task<IReadOnlyList<ExternalGenreDto>> GetGenresAsync(CancellationToken cancellationToken = default)
-    {
-        ThrowIfDown();
-
-        return Task.FromResult<IReadOnlyList<ExternalGenreDto>>(
-            _animes.Values.SelectMany(a => a.Genres).DistinctBy(g => g.ExternalId).ToList());
-    }
 
     private void ThrowIfDown()
     {

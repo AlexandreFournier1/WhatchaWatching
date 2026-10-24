@@ -3,9 +3,15 @@
     <nav class="pagination" aria-label="Pagination">
         <button type="button" class="btn btn-ghost btn-sm" disabled="@(Page <= 1)" @onclick="() => Go(Page - 1)">Previous</button>
 
-        @for (var number = 1; number <= TotalPages; number++)
+        @foreach (var number in VisiblePages())
         {
-            var target = number;
+            if (number is null)
+            {
+                <span class="gap" aria-hidden="true">...</span>
+                continue;
+            }
+
+            var target = number.Value;
             <button type="button" class="btn btn-sm @(target == Page ? "" : "btn-ghost")"
                     aria-current="@(target == Page ? "page" : null)" @onclick="() => Go(target)">@target</button>
         }
@@ -15,6 +21,9 @@
 }
 
 @code {
+    // How many pages are shown on each side of the current one.
+    private const int Around = 2;
+
     [Parameter]
     public int Page { get; set; } = 1;
 
@@ -25,4 +34,35 @@
     public EventCallback<int> PageChanged { get; set; }
 
     private Task Go(int page) => PageChanged.InvokeAsync(page);
+
+    /// <summary>The first and last pages and the ones around the current page; null stands for a gap.</summary>
+    private IEnumerable<int?> VisiblePages()
+    {
+        var from = Math.Max(Page - Around, 1);
+        var to = Math.Min(Page + Around, TotalPages);
+
+        if (from > 1)
+        {
+            yield return 1;
+            if (from > 2)
+            {
+                yield return null;
+            }
+        }
+
+        for (var number = from; number <= to; number++)
+        {
+            yield return number;
+        }
+
+        if (to < TotalPages)
+        {
+            if (to < TotalPages - 1)
+            {
+                yield return null;
+            }
+
+            yield return TotalPages;
+        }
+    }
 }

@@ -41,6 +41,13 @@
     }
     else
     {
+        @if (localOnly)
+        {
+            <p class="notice fade-in" role="status">
+                The anime services are not answering. These are only the anime already saved on this site: the list may be incomplete.
+            </p>
+        }
+
         <div class="anime-grid">
             @foreach (var anime in result.Items)
             {
@@ -82,6 +89,7 @@
     private bool loading = true;
     private bool failed;
     private bool actionFailed;
+    private bool localOnly;
     private int? userId;
     private PagedResultDto<AnimeSummaryDto> result = NoResult;
     private HashSet<int> listed = [];
@@ -106,13 +114,16 @@
         loading = true;
         failed = false;
         actionFailed = false;
+        localOnly = false;
 
         try
         {
             userId = await CurrentUser.GetUserIdAsync();
-            result = string.IsNullOrWhiteSpace(Query)
-                ? NoResult
+            var search = string.IsNullOrWhiteSpace(Query)
+                ? new AnimeSearchResultDto(NoResult, IsLocalOnly: false)
                 : await AnimeService.SearchAsync(Query.Trim(), PageNumber ?? 1);
+            result = search.Results;
+            localOnly = search.IsLocalOnly;
 
             listed = userId is { } id
                 ? (await WatchList.GetListedIdsAsync(id, result.Items.Select(a => a.Id).ToList())).ToHashSet()

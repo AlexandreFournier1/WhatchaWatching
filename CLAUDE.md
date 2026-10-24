@@ -6,7 +6,7 @@ Guidance for Claude Code when working in this repository.
 
 WhatchaWatching is a Blazor Web App (.NET 10, `net10.0`). It retrieves anime from **Jikan** (and movies/TV series from **TMDB**), lets users build a watchlist stored in MySQL, and offers a random picker with filters to choose what to watch next. See [README.md](README.md) for the overview and [docs/DATA_MODEL.md](docs/DATA_MODEL.md) for the data model.
 
-Status: the app works end to end in code: Jikan client (Middleware), services (`IAnimeService`, `IWatchListService`, `IRandomPickerService`, anime cached in the database for 7 days), and the UI (Home, My List, Search, Anime detail, Login/Register/Account) wired to them with ASP.NET Core Identity accounts. The watchlist has no status, rating or notes: it only holds what the user still wants to watch. Anime are identified by their Jikan id in the services. Not done yet: the TMDB client (movies and TV series), email confirmation (`IEmailSender`), security-stamp revalidation of the auth state. Check the code (and the "Implementation progress" section of the data model doc) before assuming something exists.
+Status: the app works end to end in code: anime providers (Middleware: Jikan, with AniList as a fallback), services (`IAnimeService`, `IWatchListService`, `IRandomPickerService`, anime cached in the database for 7 days), and the UI (Home, My List, Search, Anime detail, Login/Register/Account) wired to them with ASP.NET Core Identity accounts. The watchlist has no status, rating or notes: it only holds what the user still wants to watch. Anime are identified by their Jikan id in the services. Not done yet: the TMDB client (movies and TV series), email confirmation (`IEmailSender`), security-stamp revalidation of the auth state. Check the code (and the "Implementation progress" section of the data model doc) before assuming something exists.
 
 Solution file: `WhatchaWatching.slnx` (new XML format).
 
@@ -103,9 +103,11 @@ Rules:
 
 ## External APIs
 
-### Jikan (anime)
+### Jikan and AniList (anime)
 
-- Use Jikan for **all anime data**. Use the MyAnimeList/Jikan ID as the external identifier.
+- Use Jikan for **all anime data**. Use the MyAnimeList id as the external identifier everywhere. AniList (GraphQL, no key) is the fallback: `FallbackAnimeProvider` asks Jikan first, then AniList when Jikan fails (not when it says "not found"), and skips Jikan for 60 seconds after a failure (`ProviderCooldown`, a singleton). AniList anime are matched through their `idMal`; AniList genres have no id and are translated by name to the MyAnimeList ids (`AniListMapper`). Services depend on `IAnimeProvider`, never on a single client.
+- When no provider answers, `IAnimeService.SearchAsync` searches the anime already stored in the database (`IsLocalOnly`) and the Search page says so; it throws `AnimeProviderUnavailableException` only if nothing stored matches.
+- Timeouts are short on purpose (5 s per attempt, 12 s total, one retry): a person is waiting.
 - Keep calls in dedicated clients in `WhatchaWatching.Middleware`, behind an interface.
 
 ### TMDB (movies and TV series)

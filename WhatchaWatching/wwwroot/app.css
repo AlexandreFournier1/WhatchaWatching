@@ -249,3 +249,5 @@ a:hover { color: var(--accent-hover); }
 .remember input { accent-color: var(--accent); width: 1.1rem; height: 1.1rem; }
 .field small { font-size: .85rem; }
 .is-busy { opacity: .55; pointer-events: none; transition: opacity .2s; }
+
+.page-section > .notice { margin-bottom: 1.25rem; }

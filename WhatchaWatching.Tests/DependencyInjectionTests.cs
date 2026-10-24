@@ -5,6 +5,8 @@ using WhatchaWatching.Application;
 using WhatchaWatching.Application.Services;
 using WhatchaWatching.Common.Constants;
 using WhatchaWatching.Infrastructure.Data;
+using WhatchaWatching.Middleware;
+using WhatchaWatching.Middleware.AniList;
 using WhatchaWatching.Middleware.Jikan;
 
 namespace WhatchaWatching.Tests;
@@ -47,6 +49,23 @@ public class DependencyInjectionTests
         using var provider = services.BuildServiceProvider();
 
         Assert.IsType<JikanClient>(provider.GetRequiredService<IJikanClient>());
+        Assert.IsType<AniListClient>(provider.GetRequiredService<IAniListClient>());
+    }
+
+    [Fact]
+    public void AddApplication_RegistersTheFallbackProviderAndOneSharedCooldown()
+    {
+        var services = new ServiceCollection()
+            .AddApplication(BuildConfiguration("Server=localhost;Database=whatchawatching"));
+
+        using var provider = services.BuildServiceProvider();
+        using var firstScope = provider.CreateScope();
+        using var secondScope = provider.CreateScope();
+
+        Assert.IsType<FallbackAnimeProvider>(firstScope.ServiceProvider.GetRequiredService<IAnimeProvider>());
+        Assert.Same(
+            firstScope.ServiceProvider.GetRequiredService<ProviderCooldown>(),
+            secondScope.ServiceProvider.GetRequiredService<ProviderCooldown>());
     }
 
     [Fact]
