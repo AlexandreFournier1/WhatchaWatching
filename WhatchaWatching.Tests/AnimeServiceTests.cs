@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using WhatchaWatching.Application.Exceptions;
 using WhatchaWatching.Application.Services;
+using WhatchaWatching.Common.Dtos;
 using WhatchaWatching.Common.Enum;
 using WhatchaWatching.Middleware;
 using WhatchaWatching.Tests.TestSupport;
@@ -194,5 +195,104 @@ public class AnimeServiceTests
         var media = await context.Media.SingleAsync();
         Assert.Equal(512, media.Title.Length);
         Assert.Equal(64, media.Rating!.Length);
+    }
+
+    private static ExternalAnimeDto WithLinks(ExternalAnimeDto anime, params (string Site, string Url)[] links) =>
+        anime with { StreamingLinks = links.Select(l => new StreamingLinkDto(l.Site, l.Url)).ToList() };
+
+    [Fact]
+    public async Task Get_StoresTheStreamingLinksAndReturnsThemSorted()
+    {
+        _provider.With(WithLinks(
+            FakeAnimeProvider.Anime(1), ("Netflix", "https://netflix.test/1"), ("Crunchyroll", "https://cr.test/1")));
+
+        var anime = await CreateService().GetAsync(1);
+
+        Assert.Equal(["Crunchyroll", "Netflix"], anime!.StreamingLinks.Select(l => l.Site));
+        await using var context = _db.CreateDbContext();
+        Assert.Equal(2, await context.StreamingLinks.CountAsync());
+    }
+
+    [Fact]
+    public async Task Get_FromTheStoredCopy_StillReturnsTheLinks()
+    {
+        _provider.With(WithLinks(FakeAnimeProvider.Anime(1), ("Netflix", "https://netflix.test/1")));
+        var service = CreateService();
+        await service.GetAsync(1);
+
+        var anime = await service.GetAsync(1);
+
+        Assert.Equal(1, _provider.GetAnimeCalls);
+        Assert.Equal("https://netflix.test/1", Assert.Single(anime!.StreamingLinks).Url);
+    }
+
+    [Fact]
+    public async Task Get_OutdatedCopy_ReplacesTheLinks()
+    {
+        _provider.With(WithLinks(
+            FakeAnimeProvider.Anime(1), ("Netflix", "https://netflix.test/1"), ("Hulu", "https://hulu.test/1")));
+        var service = CreateService();
+        await service.GetAsync(1);
+
+        _provider.With(WithLinks(
+            FakeAnimeProvider.Anime(1), ("Netflix", "https://netflix.test/1"), ("Prime Video", "https://prime.test/1")));
+        _time.Advance(TimeSpan.FromDays(8));
+        var anime = await service.GetAsync(1);
+
+        Assert.Equal(["Netflix", "Prime Video"], anime!.StreamingLinks.Select(l => l.Site));
+        await using var context = _db.CreateDbContext();
+        Assert.Equal(2, await context.StreamingLinks.CountAsync());
+    }
+
+    [Fact]
+    public async Task Get_OutdatedCopy_WhenTheProviderGivesNoLinks_KeepsTheOldOnes()
+    {
+        _provider.With(WithLinks(FakeAnimeProvider.Anime(1), ("Netflix", "https://netflix.test/1")));
+        var service = CreateService();
+        await service.GetAsync(1);
+
+        _provider.With(FakeAnimeProvider.Anime(1));
+        _time.Advance(TimeSpan.FromDays(8));
+        var anime = await service.GetAsync(1);
+
+        Assert.Equal("Netflix", Assert.Single(anime!.StreamingLinks).Site);
+    }
+
+    [Fact]
+    public async Task Get_AnimeStoredBeforeTheLinksExisted_FetchesItAgainToGetThem()
+    {
+        _provider.With(FakeAnimeProvider.Anime(1));
+        var service = CreateService();
+        await service.GetAsync(1);
+        await using (var context = _db.CreateDbContext())
+        {
+            // What the migration does to the anime stored before the links existed.
+            foreach (var media in await context.Media.ToListAsync())
+            {
+                media.LastSyncedAt = null;
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        _provider.With(WithLinks(FakeAnimeProvider.Anime(1), ("Netflix", "https://netflix.test/1")));
+        var anime = await service.GetAsync(1);
+
+        Assert.Equal(2, _provider.GetAnimeCalls);
+        Assert.Single(anime!.StreamingLinks);
+    }
+
+    [Fact]
+    public async Task Search_AmongTheStoredAnime_DoesNotCarryLinks()
+    {
+        _provider.With(WithLinks(FakeAnimeProvider.Anime(1, "Frieren"), ("Netflix", "https://netflix.test/1")));
+        var service = CreateService();
+        await service.GetAsync(1);
+
+        _provider.Failure = new ExternalApiException("down");
+        var result = await service.SearchAsync("Frieren", 1);
+
+        Assert.True(result.IsLocalOnly);
+        Assert.Empty(Assert.Single(result.Results.Items).StreamingLinks);
     }
 }

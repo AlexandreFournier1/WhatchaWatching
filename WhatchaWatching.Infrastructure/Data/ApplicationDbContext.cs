@@ -12,6 +12,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<MediaEntity> Media => Set<MediaEntity>();
     public DbSet<GenreEntity> Genres => Set<GenreEntity>();
     public DbSet<MediaGenreEntity> MediaGenres => Set<MediaGenreEntity>();
+    public DbSet<StreamingLinkEntity> StreamingLinks => Set<StreamingLinkEntity>();
     public DbSet<WatchListItemEntity> WatchListItems => Set<WatchListItemEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

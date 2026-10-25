@@ -282,6 +282,34 @@ namespace WhatchaWatching.Infrastructure.Migrations
                     b.ToTable("MediaGenres");
                 });
 
+            modelBuilder.Entity("WhatchaWatching.Infrastructure.Data.Entities.StreamingLinkEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("MediaId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Site")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MediaId");
+
+                    b.ToTable("StreamingLinks");
+                });
+
             modelBuilder.Entity("WhatchaWatching.Infrastructure.Data.Entities.UserEntity", b =>
                 {
                     b.Property<int>("Id")
@@ -456,6 +484,17 @@ namespace WhatchaWatching.Infrastructure.Migrations
                     b.Navigation("Media");
                 });
 
+            modelBuilder.Entity("WhatchaWatching.Infrastructure.Data.Entities.StreamingLinkEntity", b =>
+                {
+                    b.HasOne("WhatchaWatching.Infrastructure.Data.Entities.MediaEntity", "Media")
+                        .WithMany("StreamingLinks")
+                        .HasForeignKey("MediaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Media");
+                });
+
             modelBuilder.Entity("WhatchaWatching.Infrastructure.Data.Entities.WatchListItemEntity", b =>
                 {
                     b.HasOne("WhatchaWatching.Infrastructure.Data.Entities.MediaEntity", "Media")
@@ -483,6 +522,8 @@ namespace WhatchaWatching.Infrastructure.Migrations
             modelBuilder.Entity("WhatchaWatching.Infrastructure.Data.Entities.MediaEntity", b =>
                 {
                     b.Navigation("MediaGenres");
+
+                    b.Navigation("StreamingLinks");
 
                     b.Navigation("WatchListItems");
                 });

@@ -236,5 +236,50 @@ public class AniListClientTests
 
         await Assert.ThrowsAsync<ExternalApiException>(() => client.GetAnimeAsync(1));
     }
+
+    [Fact]
+    public async Task GetAnime_KeepsOnlyTheStreamingPlatformsThatAreEnabled()
+    {
+        var client = CreateClient(StubHttpMessageHandler.Json(MediaJson("""
+            , "externalLinks": [
+                { "site": "Official Site", "url": "https://official.test/", "type": "INFO", "isDisabled": false },
+                { "site": "Twitter", "url": "https://twitter.test/a", "type": "SOCIAL", "isDisabled": false },
+                { "site": "Crunchyroll", "url": "https://crunchyroll.test/a", "type": "STREAMING", "isDisabled": false },
+                { "site": "Old platform", "url": "https://old.test/a", "type": "STREAMING", "isDisabled": true },
+                { "site": "Unsafe", "url": "javascript:alert(1)", "type": "STREAMING", "isDisabled": false },
+                { "site": "Netflix", "url": "https://netflix.test/a", "type": "STREAMING", "isDisabled": null }
+            ]
+            """)));
+
+        var anime = await client.GetAnimeAsync(1);
+
+        Assert.Equal(["Crunchyroll", "Netflix"], anime!.StreamingLinks.Select(l => l.Site));
+    }
+
+    [Fact]
+    public async Task GetAnime_WithoutLinks_ReturnsNoStreamingPlatform()
+    {
+        var anime = await CreateClient(StubHttpMessageHandler.Json(MediaJson(""))).GetAnimeAsync(1);
+
+        Assert.Empty(anime!.StreamingLinks);
+    }
+
+    [Fact]
+    public async Task GetAnime_AsksForTheLinksButSearchDoesNot()
+    {
+        var bodies = new List<string>();
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            bodies.Add(request.Content!.ReadAsStringAsync().Result);
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(MediaJson("")) };
+        });
+        var client = CreateClient(handler);
+
+        await client.SearchAnimeAsync("x", 1);
+        await client.GetAnimeAsync(1);
+
+        Assert.DoesNotContain("externalLinks", bodies[0]);
+        Assert.Contains("externalLinks", bodies[1]);
+    }
 }
 

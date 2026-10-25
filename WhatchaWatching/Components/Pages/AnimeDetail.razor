@@ -74,6 +74,27 @@
 
                 <p class="synopsis">@(anime.Synopsis ?? "No summary available.")</p>
 
+                <section class="watch" aria-labelledby="watch-title">
+                    <h2 id="watch-title">Where to watch</h2>
+
+                    @if (anime.StreamingLinks.Count > 0)
+                    {
+                        <ul class="watch-links">
+                            @foreach (var link in anime.StreamingLinks)
+                            {
+                                <li>
+                                    <a class="btn btn-ghost btn-sm" href="@link.Url" target="_blank" rel="noopener noreferrer">@link.Site</a>
+                                </li>
+                            }
+                        </ul>
+                        <p class="muted small">Availability depends on your country.</p>
+                    }
+                    else
+                    {
+                        <p class="muted">No streaming platform is known for this anime.</p>
+                    }
+                </section>
+
                 <div class="actions">
                     @if (userId is null)
                     {

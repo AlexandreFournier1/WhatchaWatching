@@ -38,8 +38,28 @@ public sealed class JikanClient(HttpClient httpClient) : IJikanClient
     public async Task<ExternalAnimeDto?> GetAnimeAsync(int externalId, CancellationToken cancellationToken = default)
     {
         var response = await GetAsync<JikanResponse<JikanAnime>>($"anime/{externalId}", cancellationToken, notFoundIsNull: true);
+        if (response?.Data is not { } anime)
+        {
+            return null;
+        }
 
-        return response?.Data is { } anime ? JikanMapper.ToDto(anime) : null;
+        return JikanMapper.ToDto(anime) with { StreamingLinks = await GetStreamingLinksAsync(externalId, cancellationToken) };
+    }
+
+    // The links are a bonus: when Jikan cannot give them, the anime is still returned without.
+    private async Task<IReadOnlyList<StreamingLinkDto>> GetStreamingLinksAsync(int externalId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await GetAsync<JikanListResponse<JikanStreamingLink>>(
+                $"anime/{externalId}/streaming", cancellationToken, notFoundIsNull: true);
+
+            return StreamingLinkFilter.Clean((response?.Data ?? []).Select(l => (l.Name, l.Url)));
+        }
+        catch (ExternalApiException)
+        {
+            return [];
+        }
     }
 
     public async Task<IReadOnlyList<ExternalGenreDto>> GetGenresAsync(CancellationToken cancellationToken = default)

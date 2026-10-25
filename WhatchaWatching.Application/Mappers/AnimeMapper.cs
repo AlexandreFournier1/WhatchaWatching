@@ -17,7 +17,10 @@ internal static class AnimeMapper
         media.EpisodeCount,
         media.Year,
         media.Score,
-        media.Status.ToString());
+        media.Status.ToString())
+    {
+        StreamingLinks = media.StreamingLinks.OrderBy(l => l.Site).Select(l => new StreamingLinkDto(l.Site, l.Url)).ToList()
+    };
 
     public static AnimeSummaryDto ToSummary(ExternalAnimeDto anime) => new(
         anime.ExternalId,
@@ -29,7 +32,10 @@ internal static class AnimeMapper
         anime.EpisodeCount,
         anime.Year,
         anime.Score,
-        anime.Status?.ToString());
+        anime.Status?.ToString())
+    {
+        StreamingLinks = anime.StreamingLinks
+    };
 
     /// <summary>Copies what Jikan says onto the stored anime. Genres are handled by the caller.</summary>
     public static void Apply(MediaEntity media, ExternalAnimeDto anime, DateTime syncedAt)

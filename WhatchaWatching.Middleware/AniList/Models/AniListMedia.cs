@@ -12,4 +12,5 @@ internal record AniListMedia(
     int? SeasonYear,
     string? Season,
     AniListDate? StartDate,
-    List<string>? Genres);
+    List<string>? Genres,
+    List<AniListExternalLink>? ExternalLinks);

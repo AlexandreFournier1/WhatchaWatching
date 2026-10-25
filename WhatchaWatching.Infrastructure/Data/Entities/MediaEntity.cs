@@ -25,5 +25,6 @@ public class MediaEntity : IAuditableEntity
     public DateTime UpdatedAt { get; set; }
 
     public ICollection<MediaGenreEntity> MediaGenres { get; set; } = new List<MediaGenreEntity>();
+    public ICollection<StreamingLinkEntity> StreamingLinks { get; set; } = new List<StreamingLinkEntity>();
     public ICollection<WatchListItemEntity> WatchListItems { get; set; } = new List<WatchListItemEntity>();
 }

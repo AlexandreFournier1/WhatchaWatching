@@ -66,8 +66,18 @@ internal static partial class AniListMapper
             media.Season?.ToLowerInvariant(),
             null,
             releaseDate,
-            ToGenres(media.Genres));
+            ToGenres(media.Genres))
+        {
+            StreamingLinks = ToStreamingLinks(media.ExternalLinks)
+        };
     }
+
+    // AniList also lists official sites and social networks: only the streaming platforms are of use here.
+    public static IReadOnlyList<StreamingLinkDto> ToStreamingLinks(IEnumerable<AniListExternalLink>? links) =>
+        StreamingLinkFilter.Clean(
+            (links ?? [])
+                .Where(l => l.Type == "STREAMING" && l.IsDisabled != true)
+                .Select(l => (l.Site, l.Url)));
 
     public static MediaStatus? ParseStatus(string? status) => status switch
     {

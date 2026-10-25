@@ -17,4 +17,8 @@ public record ExternalAnimeDto(
     string? Season,
     string? Rating,
     DateTime? ReleaseDate,
-    IReadOnlyList<ExternalGenreDto> Genres);
+    IReadOnlyList<ExternalGenreDto> Genres)
+{
+    /// <summary>Streaming platforms offering the anime. Empty when unknown.</summary>
+    public IReadOnlyList<StreamingLinkDto> StreamingLinks { get; init; } = [];
+}

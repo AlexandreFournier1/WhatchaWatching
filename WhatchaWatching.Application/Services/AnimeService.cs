@@ -135,6 +135,8 @@ public class AnimeService(
         context.Media
             .Include(m => m.MediaGenres)
             .ThenInclude(mg => mg.Genre)
+            .Include(m => m.StreamingLinks)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(m => m.Type == MediaType.Anime && m.ExternalId == externalId, cancellationToken);
 
     private static async Task<AnimeSummaryDto> StoreAsync(
@@ -152,9 +154,39 @@ public class AnimeService(
 
         AnimeMapper.Apply(media, external, syncedAt);
         await SyncGenresAsync(context, media, external.Genres, cancellationToken);
+        SyncStreamingLinks(context, media, external.StreamingLinks);
         await context.SaveChangesAsync(cancellationToken);
 
         return AnimeMapper.ToSummary(media);
+    }
+
+    /// <summary>
+    /// Makes the anime carry exactly the given links. An empty list changes nothing: it is more often a provider that
+    /// could not give its links than an anime that left every platform, and an old link is better than none.
+    /// </summary>
+    private static void SyncStreamingLinks(
+        ApplicationDbContext context, MediaEntity media, IReadOnlyList<StreamingLinkDto> links)
+    {
+        if (links.Count == 0)
+        {
+            return;
+        }
+
+        var outdated = media.StreamingLinks.Where(stored => links.All(l => l.Url != stored.Url)).ToList();
+        context.StreamingLinks.RemoveRange(outdated);
+
+        foreach (var link in links)
+        {
+            var stored = media.StreamingLinks.FirstOrDefault(s => s.Url == link.Url);
+            if (stored is null)
+            {
+                media.StreamingLinks.Add(new StreamingLinkEntity { Site = link.Site, Url = link.Url });
+            }
+            else
+            {
+                stored.Site = link.Site;
+            }
+        }
     }
 
     /// <summary>Makes the anime link exactly the given genres, reusing the genres already stored.</summary>

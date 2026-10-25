@@ -14,13 +14,16 @@ public sealed class AniListClient(HttpClient httpClient) : IAniListClient
         "idMal title { romaji english native } description coverImage { large } episodes duration status " +
         "averageScore seasonYear season startDate { year month day } genres";
 
+    // Used by the details only: a search does not need the platforms of twelve anime.
+    private const string LinkFields = " externalLinks { site url type isDisabled }";
+
     private const string SearchQuery =
         "query ($search: String, $page: Int, $perPage: Int) { Page(page: $page, perPage: $perPage) { " +
         "pageInfo { total currentPage lastPage } " +
         "media(search: $search, type: ANIME, isAdult: false, sort: SEARCH_MATCH) { " + MediaFields + " } } }";
 
     private const string DetailsQuery =
-        "query ($id: Int) { Media(idMal: $id, type: ANIME, isAdult: false) { " + MediaFields + " } }";
+        "query ($id: Int) { Media(idMal: $id, type: ANIME, isAdult: false) { " + MediaFields + LinkFields + " } }";
 
     // The default web options read the camelCase names AniList uses.
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);

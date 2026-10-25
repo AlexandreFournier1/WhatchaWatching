@@ -11,6 +11,7 @@ erDiagram
     USER ||--o{ WATCHLIST_ITEM : has
     MEDIA ||--o{ WATCHLIST_ITEM : "is listed in"
     MEDIA ||--o{ MEDIA_GENRE : has
+    MEDIA ||--o{ STREAMING_LINK : "can be watched on"
     GENRE ||--o{ MEDIA_GENRE : "tags"
 
     USER {
@@ -46,6 +47,12 @@ erDiagram
         int Id PK
         int ExternalId UK "provider id"
         string Name UK
+    }
+    STREAMING_LINK {
+        int Id PK
+        int MediaId FK
+        string Site
+        string Url
     }
     MEDIA_GENRE {
         int MediaId PK, FK
@@ -103,6 +110,16 @@ Join table for the many-to-many between Media and Genre.
 - Composite primary key `(MediaId, GenreId)`. There is no surrogate `Id`.
 - Both foreign keys cascade on delete.
 
+### StreamingLink
+A streaming platform where a media can be watched legally (Crunchyroll, Netflix...). Filled with the media from Jikan (`/anime/{id}/streaming`) or AniList (`externalLinks` of type `STREAMING`), and replaced as a set each time the media is refreshed (an empty list from a provider leaves the old links alone).
+
+| Field | Type | Null | Notes |
+|---|---|---|---|
+| Id | int | no | PK |
+| MediaId | int | no | FK → Media, indexed. |
+| Site | string(64) | no | Platform name. |
+| Url | string(512) | no | Only http and https addresses are stored. |
+
 ### User
 
 `UserEntity` inherits from `IdentityUser<int>`, and `ApplicationDbContext` from `IdentityDbContext<UserEntity, IdentityRole<int>, int>`. Identity owns the account columns: `Id`, `UserName`, `NormalizedUserName`, `Email`, `NormalizedEmail`, `EmailConfirmed`, `PasswordHash`, `SecurityStamp`, `ConcurrencyStamp`, `PhoneNumber`, `PhoneNumberConfirmed`, `TwoFactorEnabled`, `LockoutEnd`, `LockoutEnabled` and `AccessFailedCount`. The project adds only the fields below.
@@ -135,6 +152,7 @@ Indexes: unique `(UserId, MediaId)`, so a media can appear once per user (it als
 | User → WatchListItem | Cascade |
 | Media → WatchListItem | **Restrict**. Media is shared catalog data and cannot be removed while someone lists it. |
 | Media → MediaGenre | Cascade |
+| Media → StreamingLink | Cascade |
 | Genre → MediaGenre | Cascade |
 
 ## Conventions
@@ -226,3 +244,4 @@ The connection string lives in the web project's user-secrets (`ConnectionString
 - `InitialCreate` (`20261005111804`) was applied to the AlwaysData database `whatcha-watching_database` on 2026-10-05. Further migrations are applied the same way (see [Working with the database](#working-with-the-database)). Be careful: that database is production.
 - `RemoveUserRating` (`20261024142320`) drops `UserScore`, `Notes` and `CK_WatchListItems_UserScore` from `WatchListItems`. Applied to AlwaysData on 2026-10-24.
 - `RemoveWatchListStatus` (`20261024144435`) drops `Status`, `Progress`, `StartDate`, `EndDate` and the index `(UserId, Status)` from `WatchListItems`. Applied to AlwaysData on 2026-10-24.
+- `AddStreamingLinks` (`20261025083911`) creates the table `StreamingLinks` (nothing existing is changed or deleted) and marks every stored `Media` as never synchronized (`LastSyncedAt = NULL`), so that each anime fetches its data again, with its links, the next time it is opened. Applied to AlwaysData on 2026-10-25, before the code that uses it was deployed.

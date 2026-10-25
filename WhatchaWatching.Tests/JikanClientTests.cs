@@ -127,10 +127,76 @@ public class JikanClientTests
 
         var anime = await client.GetAnimeAsync(1);
 
-        Assert.Equal("anime/1", Assert.Single(handler.Requests).RequestUri!.AbsolutePath.Split("/v4/")[1]);
+        Assert.Equal("anime/1", handler.Requests[0].RequestUri!.AbsolutePath.Split("/v4/")[1]);
         Assert.Equal("Test", anime!.Title);
     }
 
+
+    private static StubHttpMessageHandler JikanRoutes(string streamingJson, HttpStatusCode streamingStatus = HttpStatusCode.OK) =>
+        new(request => request.RequestUri!.AbsolutePath.EndsWith("/streaming")
+            ? new HttpResponseMessage(streamingStatus) { Content = new StringContent(streamingJson, System.Text.Encoding.UTF8, "application/json") }
+            : new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(AnimeJson("24 min"), System.Text.Encoding.UTF8, "application/json") });
+
+    [Fact]
+    public async Task GetAnime_AlsoReadsTheStreamingPlatforms()
+    {
+        var handler = JikanRoutes("""
+            { "data": [
+                { "name": "Crunchyroll", "url": "https://www.crunchyroll.com/series/abc" },
+                { "name": "Netflix", "url": "http://www.netflix.com/title/1" }
+            ] }
+            """);
+
+        var anime = await CreateClient(handler).GetAnimeAsync(1);
+
+        Assert.Equal("anime/1/streaming", handler.Requests[1].RequestUri!.AbsolutePath.Split("/v4/")[1]);
+        Assert.Equal(["Crunchyroll", "Netflix"], anime!.StreamingLinks.Select(l => l.Site));
+        Assert.Equal("https://www.crunchyroll.com/series/abc", anime.StreamingLinks[0].Url);
+    }
+
+    [Fact]
+    public async Task GetAnime_DropsLinksThatAreNotSafeWebAddresses()
+    {
+        var tooLong = "https://example.test/" + new string('a', 600);
+        var handler = JikanRoutes($$"""
+            { "data": [
+                { "name": "Evil", "url": "javascript:alert(1)" },
+                { "name": "Ftp", "url": "ftp://files.test/a" },
+                { "name": "Relative", "url": "/just/a/path" },
+                { "name": "", "url": "https://noname.test/" },
+                { "name": "Too long", "url": "{{tooLong}}" },
+                { "name": "Missing", "url": null },
+                { "name": "Good", "url": "https://good.test/a" },
+                { "name": "Good again", "url": "https://GOOD.test/a" }
+            ] }
+            """);
+
+        var anime = await CreateClient(handler).GetAnimeAsync(1);
+
+        var link = Assert.Single(anime!.StreamingLinks);
+        Assert.Equal("Good", link.Site);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    [InlineData(HttpStatusCode.NotFound)]
+    [InlineData(HttpStatusCode.TooManyRequests)]
+    public async Task GetAnime_WhenTheStreamingPlatformsCannotBeRead_StillReturnsTheAnime(HttpStatusCode status)
+    {
+        var anime = await CreateClient(JikanRoutes("{}", status)).GetAnimeAsync(1);
+
+        Assert.Equal("Test", anime!.Title);
+        Assert.Empty(anime.StreamingLinks);
+    }
+
+    [Fact]
+    public async Task GetAnime_WhenTheAnimeDoesNotExist_DoesNotAskForItsPlatforms()
+    {
+        var handler = StubHttpMessageHandler.Status(HttpStatusCode.NotFound);
+
+        Assert.Null(await CreateClient(handler).GetAnimeAsync(999999));
+        Assert.Single(handler.Requests);
+    }
     [Theory]
     [InlineData("24 min per ep", 24)]
     [InlineData("1 hr 30 min", 90)]
