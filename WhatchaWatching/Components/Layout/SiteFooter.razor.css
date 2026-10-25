@@ -12,5 +12,25 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
-    gap: .5rem 1.5rem;
+    gap: 1rem 2rem;
+}
+
+.credits, .data {
+    display: grid;
+    gap: .25rem;
+    align-content: start;
+}
+
+.data { text-align: right; }
+
+.name { color: var(--text); font-weight: 500; }
+
+.version {
+    font-size: .8rem;
+    font-variant-numeric: tabular-nums;
+    opacity: .75;
+}
+
+@media (max-width: 560px) {
+    .data { text-align: left; }
 }

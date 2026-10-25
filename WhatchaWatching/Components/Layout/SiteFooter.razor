@@ -1,6 +1,22 @@
+@using WhatchaWatching.Services
+
 <footer class="footer">
     <div class="footer-inner">
-        <span>WhatchaWatching</span>
-        <span>Anime data from <a href="https://jikan.moe/" target="_blank" rel="noopener noreferrer">Jikan</a> (MyAnimeList)</span>
+        <div class="credits">
+            <span class="name">WhatchaWatching</span>
+            <span>Made by Alexandre Fournier &middot; &copy; @DateTime.UtcNow.Year</span>
+        </div>
+
+        <div class="data">
+            <span>
+                Anime data from
+                <a href="https://jikan.moe/" target="_blank" rel="noopener noreferrer">Jikan</a> (MyAnimeList)
+                and <a href="https://anilist.co/" target="_blank" rel="noopener noreferrer">AniList</a>
+            </span>
+            @if (AppVersion.Display.Length > 0)
+            {
+                <span class="version" title="Version of the site and commit it was built from">@AppVersion.Display</span>
+            }
+        </div>
     </div>
 </footer>

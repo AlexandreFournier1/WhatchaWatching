@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using MySqlConnector;
 using WhatchaWatching.Common.Constants;
 using WhatchaWatching.Infrastructure.Data;
 
@@ -24,7 +25,7 @@ public static class DependencyInjection
             options.UseMySql(
                 connectionString,
                 string.IsNullOrWhiteSpace(configuredVersion)
-                    ? ServerVersion.AutoDetect(connectionString)
+                    ? DetectServerVersion(connectionString)
                     : ServerVersion.Parse(configuredVersion),
                 mySql => mySql.EnableRetryOnFailure()));
 
@@ -32,5 +33,23 @@ public static class DependencyInjection
         services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<ApplicationDbContext>>().CreateDbContext());
 
         return services;
+    }
+
+    // The error of the driver ("Connect Timeout expired") does not say which database was tried. The host and the port
+    // are enough to tell the local container from the production database; the user and the password are never shown.
+    private static ServerVersion DetectServerVersion(string connectionString)
+    {
+        try
+        {
+            return ServerVersion.AutoDetect(connectionString);
+        }
+        catch (MySqlException ex)
+        {
+            var target = new MySqlConnectionStringBuilder(connectionString);
+            throw new InvalidOperationException(
+                $"The database at {target.Server}:{target.Port} did not answer. Check that it is running " +
+                "(with Aspire: Docker is started and the mysql resource is healthy in the dashboard) " +
+                "and that the connection string points to it.", ex);
+        }
     }
 }
