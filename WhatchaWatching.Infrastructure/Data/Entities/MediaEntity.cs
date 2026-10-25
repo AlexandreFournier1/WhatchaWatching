@@ -20,10 +20,13 @@ public class MediaEntity : IAuditableEntity
     public string? Season { get; set; }
     public string? Rating { get; set; } // Age rating
     public string? ImageUrl { get; set; }
+    public bool IsAdult { get; set; } // Hentai and the like: only shown to users who turned adult content on
     public DateTime? LastSyncedAt { get; set; }
+    public int? CreatedByUserId { get; set; } // Set for an anime added by hand, which only that user can see; null for the shared catalog
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
+    public UserEntity? CreatedBy { get; set; }
     public ICollection<MediaGenreEntity> MediaGenres { get; set; } = new List<MediaGenreEntity>();
     public ICollection<StreamingLinkEntity> StreamingLinks { get; set; } = new List<StreamingLinkEntity>();
     public ICollection<WatchListItemEntity> WatchListItems { get; set; } = new List<WatchListItemEntity>();

@@ -2,6 +2,8 @@
 @inject IAnimeService AnimeService
 @inject IWatchListService WatchList
 @inject ICurrentUser CurrentUser
+@inject IUserSettingsService Settings
+@inject AdultFilterState AdultState
 @inject NavigationManager Navigation
 @inject ILogger<Search> Logger
 
@@ -14,6 +16,8 @@
         {
             <p class="muted fade-in">@result.TotalItems result(s) for "@Query"</p>
         }
+
+        <AdultSwitch Visible="profileAllowsAdult" Value="AdultState.Enabled" ValueChanged="OnAdultChanged" />
     </header>
 
     @if (loading)
@@ -80,6 +84,11 @@
 
         <Pagination Page="result.Page" TotalPages="result.TotalPages" PageChanged="GoToPage" />
     }
+
+    @if (!loading && !string.IsNullOrWhiteSpace(Query))
+    {
+        <p class="manual-link muted">Still not there? <a href="anime/new">Add it by hand</a>.</p>
+    }
 </section>
 
 @code {
@@ -90,6 +99,7 @@
     private bool failed;
     private bool actionFailed;
     private bool localOnly;
+    private bool profileAllowsAdult;
     private int? userId;
     private PagedResultDto<AnimeSummaryDto> result = NoResult;
     private HashSet<int> listed = [];
@@ -119,9 +129,11 @@
         try
         {
             userId = await CurrentUser.GetUserIdAsync();
+            profileAllowsAdult = userId is { } viewer && await Settings.ShowsAdultContentAsync(viewer);
+            var includeAdult = profileAllowsAdult && AdultState.Enabled;
             var search = string.IsNullOrWhiteSpace(Query)
                 ? new AnimeSearchResultDto(NoResult, IsLocalOnly: false)
-                : await AnimeService.SearchAsync(Query.Trim(), PageNumber ?? 1);
+                : await AnimeService.SearchAsync(Query.Trim(), PageNumber ?? 1, includeAdult);
             result = search.Results;
             localOnly = search.IsLocalOnly;
 
@@ -169,6 +181,21 @@
         {
             Logger.LogError(ex, "Anime {ExternalId} could not be added or removed.", externalId);
             actionFailed = true;
+        }
+    }
+
+    private async Task OnAdultChanged(bool enabled)
+    {
+        AdultState.Enabled = enabled;
+
+        // The results change, so the search starts again from its first page.
+        if (PageNumber is > 1)
+        {
+            Navigation.NavigateTo(Navigation.GetUriWithQueryParameter("page", (int?)null));
+        }
+        else
+        {
+            await LoadAsync();
         }
     }
 

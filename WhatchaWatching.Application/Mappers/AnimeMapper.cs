@@ -19,6 +19,8 @@ internal static class AnimeMapper
         media.Score,
         media.Status.ToString())
     {
+        IsCustom = media.CreatedByUserId is not null,
+        IsAdult = media.IsAdult,
         StreamingLinks = media.StreamingLinks.OrderBy(l => l.Site).Select(l => new StreamingLinkDto(l.Site, l.Url)).ToList()
     };
 
@@ -34,7 +36,8 @@ internal static class AnimeMapper
         anime.Score,
         anime.Status?.ToString())
     {
-        StreamingLinks = anime.StreamingLinks
+        StreamingLinks = anime.StreamingLinks,
+        IsAdult = anime.IsAdult
     };
 
     /// <summary>Copies what Jikan says onto the stored anime. Genres are handled by the caller.</summary>
@@ -53,6 +56,7 @@ internal static class AnimeMapper
         media.Year = anime.Year;
         media.Season = Truncate(anime.Season, ConfigurationConstants.SMALL_SIZE);
         media.Rating = Truncate(anime.Rating, ConfigurationConstants.SMALL_SIZE);
+        media.IsAdult = anime.IsAdult;
         media.LastSyncedAt = syncedAt;
     }
 

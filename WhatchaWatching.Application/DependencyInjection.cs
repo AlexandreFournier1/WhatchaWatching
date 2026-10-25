@@ -17,6 +17,8 @@ public static class DependencyInjection
         services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<IAnimeService, AnimeService>();
         services.AddScoped<IWatchListService, WatchListService>();
+        services.AddScoped<ICustomAnimeService, CustomAnimeService>();
+        services.AddScoped<IUserSettingsService, UserSettingsService>();
         services.AddScoped<IRandomPickerService, RandomPickerService>();
 
         return services;

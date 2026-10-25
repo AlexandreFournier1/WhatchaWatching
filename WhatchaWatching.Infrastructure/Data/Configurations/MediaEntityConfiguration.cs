@@ -67,6 +67,9 @@ public class MediaEntityConfiguration : IEntityTypeConfiguration<MediaEntity>
             .HasMaxLength(ConfigurationConstants.LARGE_SIZE)
             .IsRequired(false);
 
+        builder.Property(m => m.IsAdult)
+            .IsRequired();
+
         builder.Property(m => m.LastSyncedAt)
             .IsRequired(false);
 
@@ -79,6 +82,14 @@ public class MediaEntityConfiguration : IEntityTypeConfiguration<MediaEntity>
         // A provider id is only unique within a media type (anime and manga ids overlap).
         builder.HasIndex(m => new { m.Type, m.ExternalId })
             .IsUnique();
+
+        // Who added an anime by hand (null for the shared catalog). Users are never deleted by the app yet: when that
+        // exists, their anime must be deleted first, since losing the owner would make them public.
+        builder.HasOne(m => m.CreatedBy)
+            .WithMany()
+            .HasForeignKey(m => m.CreatedByUserId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
 
         builder.HasIndex(m => m.Type);
 

@@ -12,6 +12,7 @@
         @if (!loading && !failed)
         {
             <p class="muted fade-in">@items.Count @(IsFiltered ? "matching" : "to watch")</p>
+            <p class="fade-in"><a href="anime/new">Add an anime by hand</a></p>
         }
     </header>
 
@@ -54,7 +55,8 @@
                 @foreach (var anime in items)
                 {
                     <AnimeCard Anime="anime" @key="anime.Id">
-                        <button type="button" class="btn btn-danger btn-sm" @onclick="() => RemoveAsync(anime.Id)">
+                        <button type="button" class="btn btn-danger btn-sm" title="@(anime.IsCustom ? "Remove and delete this anime" : "Remove from my list")"
+                                @onclick="() => RemoveAsync(anime.Id)">
                             <Icon Name="trash" Size="16" /> Remove
                         </button>
                     </AnimeCard>

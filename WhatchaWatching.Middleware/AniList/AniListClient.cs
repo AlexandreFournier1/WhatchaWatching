@@ -12,30 +12,38 @@ public sealed class AniListClient(HttpClient httpClient) : IAniListClient
 {
     private const string MediaFields =
         "idMal title { romaji english native } description coverImage { large } episodes duration status " +
-        "averageScore seasonYear season startDate { year month day } genres";
+        "averageScore seasonYear season startDate { year month day } genres isAdult";
 
     // Used by the details only: a search does not need the platforms of twelve anime.
     private const string LinkFields = " externalLinks { site url type isDisabled }";
 
-    private const string SearchQuery =
+    // AniList hides adult anime unless the argument is absent: "isAdult: null" still hides them, so it is left out of
+    // the query to include them.
+    private const string SearchQueryStart =
         "query ($search: String, $page: Int, $perPage: Int) { Page(page: $page, perPage: $perPage) { " +
-        "pageInfo { total currentPage lastPage } " +
-        "media(search: $search, type: ANIME, isAdult: false, sort: SEARCH_MATCH) { " + MediaFields + " } } }";
+        "pageInfo { total currentPage lastPage } media(search: $search, type: ANIME, ";
 
+    private const string SearchQueryEnd = "sort: SEARCH_MATCH) { " + MediaFields + " } } }";
+
+    private const string SafeSearchQuery = SearchQueryStart + "isAdult: false, " + SearchQueryEnd;
+    private const string AdultSearchQuery = SearchQueryStart + SearchQueryEnd;
+
+    // The details always include adult anime and say so (IsAdult): the service decides who may see them.
     private const string DetailsQuery =
-        "query ($id: Int) { Media(idMal: $id, type: ANIME, isAdult: false) { " + MediaFields + LinkFields + " } }";
+        "query ($id: Int) { Media(idMal: $id, type: ANIME) { " + MediaFields + LinkFields + " } }";
 
     // The default web options read the camelCase names AniList uses.
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public async Task<PagedResultDto<ExternalAnimeDto>> SearchAnimeAsync(
-        string query, int page, CancellationToken cancellationToken = default)
+        string query, int page, bool includeAdult = false, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(query);
         var currentPage = Math.Max(page, 1);
 
         var variables = new { search = query.Trim(), page = currentPage, perPage = ExternalApiConstants.SEARCH_PAGE_SIZE };
-        var response = await PostAsync<AniListPageData>(SearchQuery, variables, cancellationToken);
+        var response = await PostAsync<AniListPageData>(
+            includeAdult ? AdultSearchQuery : SafeSearchQuery, variables, cancellationToken);
 
         var pageData = response?.Page;
         var items = (pageData?.Media ?? [])

@@ -132,10 +132,10 @@ public class JikanClientTests
     }
 
 
-    private static StubHttpMessageHandler JikanRoutes(string streamingJson, HttpStatusCode streamingStatus = HttpStatusCode.OK) =>
+    private static StubHttpMessageHandler JikanRoutes(string streamingJson, string? animeJson = null, HttpStatusCode streamingStatus = HttpStatusCode.OK) =>
         new(request => request.RequestUri!.AbsolutePath.EndsWith("/streaming")
             ? new HttpResponseMessage(streamingStatus) { Content = new StringContent(streamingJson, System.Text.Encoding.UTF8, "application/json") }
-            : new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(AnimeJson("24 min"), System.Text.Encoding.UTF8, "application/json") });
+            : new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(animeJson ?? AnimeJson("24 min"), System.Text.Encoding.UTF8, "application/json") });
 
     [Fact]
     public async Task GetAnime_AlsoReadsTheStreamingPlatforms()
@@ -183,7 +183,7 @@ public class JikanClientTests
     [InlineData(HttpStatusCode.TooManyRequests)]
     public async Task GetAnime_WhenTheStreamingPlatformsCannotBeRead_StillReturnsTheAnime(HttpStatusCode status)
     {
-        var anime = await CreateClient(JikanRoutes("{}", status)).GetAnimeAsync(1);
+        var anime = await CreateClient(JikanRoutes("{}", null, status)).GetAnimeAsync(1);
 
         Assert.Equal("Test", anime!.Title);
         Assert.Empty(anime.StreamingLinks);
@@ -274,5 +274,48 @@ public class JikanClientTests
         await cancellation.CancelAsync();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => client.GetGenresAsync(cancellation.Token));
+    }
+
+    [Fact]
+    public async Task SearchAnime_IsSafeForWorkByDefaultAndLiftsTheFilterOnRequest()
+    {
+        var safe = StubHttpMessageHandler.Json("""{ "data": [] }""");
+        var all = StubHttpMessageHandler.Json("""{ "data": [] }""");
+
+        await CreateClient(safe).SearchAnimeAsync("x", 1);
+        await CreateClient(all).SearchAnimeAsync("x", 1, includeAdult: true);
+
+        Assert.Contains("sfw=true", safe.Requests[0].RequestUri!.Query);
+        Assert.DoesNotContain("sfw", all.Requests[0].RequestUri!.Query);
+    }
+
+    [Theory]
+    [InlineData("""{ "rating": "Rx - Hentai", "explicit_genres": [] }""", true)]
+    [InlineData("""{ "rating": "PG-13 - Teens 13 or older", "explicit_genres": [ { "mal_id": 49, "name": "Erotica" } ] }""", true)]
+    [InlineData("""{ "rating": "R+ - Mild Nudity", "explicit_genres": [] }""", false)]
+    [InlineData("""{ "rating": null }""", false)]
+    public async Task GetAnime_FlagsAdultAnime(string fields, bool expected)
+    {
+        var json = "{ \"data\": { \"mal_id\": 1, \"title\": \"Test\", " + fields.Trim('{', '}', ' ') + " } }";
+        var client = CreateClient(JikanRoutes("""{ "data": [] }""", json));
+
+        var anime = await client.GetAnimeAsync(1);
+
+        Assert.Equal(expected, anime!.IsAdult);
+    }
+
+    [Fact]
+    public async Task GetAnime_ListsTheExplicitGenresWithTheOthers()
+    {
+        var json = """
+            { "data": { "mal_id": 1, "title": "Test", "rating": "Rx - Hentai",
+              "genres": [ { "mal_id": 4, "name": "Comedy" } ],
+              "explicit_genres": [ { "mal_id": 12, "name": "Hentai" } ] } }
+            """;
+        var client = CreateClient(JikanRoutes("""{ "data": [] }""", json));
+
+        var anime = await client.GetAnimeAsync(1);
+
+        Assert.Equal(["Comedy", "Hentai"], anime!.Genres.Select(g => g.Name));
     }
 }

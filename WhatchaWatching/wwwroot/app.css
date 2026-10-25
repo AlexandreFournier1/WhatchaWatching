@@ -251,3 +251,7 @@ a:hover { color: var(--accent-hover); }
 .is-busy { opacity: .55; pointer-events: none; transition: opacity .2s; }
 
 .page-section > .notice { margin-bottom: 1.25rem; }
+
+.manual-link { margin-top: 2rem; text-align: center; }
+
+.chip-adult { border-color: var(--accent); color: var(--accent); }

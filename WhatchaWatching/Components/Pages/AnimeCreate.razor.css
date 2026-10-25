@@ -1,0 +1,20 @@
+.form-card { max-width: 680px; margin: 0 auto; }
+
+.custom-form { display: grid; gap: 1.1rem; }
+
+.row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 1rem;
+}
+
+.field small { font-size: .85rem; }
+
+.label { color: var(--text-2); font-size: .9rem; }
+
+textarea.input { resize: vertical; }
+
+.buttons { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: .5rem; }
+
+/* The status and genres controls sit on one row: keep the dropdown the height of the select. */
+.row ::deep .filter { min-width: 0; }

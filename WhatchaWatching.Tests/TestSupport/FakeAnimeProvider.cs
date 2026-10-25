@@ -10,6 +10,9 @@ public sealed class FakeAnimeProvider : IAnimeProvider
 
     public int GetAnimeCalls { get; private set; }
 
+    /// <summary>What the last search asked for, like a provider that honors it.</summary>
+    public bool? LastIncludeAdult { get; private set; }
+
     /// <summary>When set, every call throws it (a Jikan outage).</summary>
     public ExternalApiException? Failure { get; set; }
 
@@ -53,12 +56,13 @@ public sealed class FakeAnimeProvider : IAnimeProvider
         return this;
     }
 
-    public Task<PagedResultDto<ExternalAnimeDto>> SearchAnimeAsync(string query, int page, CancellationToken cancellationToken = default)
+    public Task<PagedResultDto<ExternalAnimeDto>> SearchAnimeAsync(string query, int page, bool includeAdult = false, CancellationToken cancellationToken = default)
     {
+        LastIncludeAdult = includeAdult;
         ThrowIfDown();
 
         var matches = _animes.Values
-            .Where(a => a.Title.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .Where(a => a.Title.Contains(query, StringComparison.OrdinalIgnoreCase) && (includeAdult || !a.IsAdult))
             .ToList();
 
         return Task.FromResult(new PagedResultDto<ExternalAnimeDto>(matches, page, 2, matches.Count));

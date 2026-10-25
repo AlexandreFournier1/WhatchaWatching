@@ -1,7 +1,9 @@
 @page "/anime/{Id:int}"
 @inject IAnimeService AnimeService
+@inject ICustomAnimeService CustomAnimes
 @inject IWatchListService WatchList
 @inject ICurrentUser CurrentUser
+@inject IUserSettingsService Settings
 @inject NavigationManager Navigation
 @inject ILogger<AnimeDetail> Logger
 
@@ -66,6 +68,10 @@
                 </p>
 
                 <div class="chip-list">
+                    @if (anime.IsAdult)
+                    {
+                        <span class="chip chip-adult">18+</span>
+                    }
                     @foreach (var genre in anime.Genres)
                     {
                         <span class="chip">@genre</span>
@@ -74,31 +80,55 @@
 
                 <p class="synopsis">@(anime.Synopsis ?? "No summary available.")</p>
 
-                <section class="watch" aria-labelledby="watch-title">
-                    <h2 id="watch-title">Where to watch</h2>
+                @if (anime.IsCustom)
+                {
+                    <p class="notice">You added this anime by hand. Only you can see it.</p>
+                }
+                else
+                {
+                    <section class="watch" aria-labelledby="watch-title">
+                        <h2 id="watch-title">Where to watch</h2>
 
-                    @if (anime.StreamingLinks.Count > 0)
-                    {
-                        <ul class="watch-links">
-                            @foreach (var link in anime.StreamingLinks)
-                            {
-                                <li>
-                                    <a class="btn btn-ghost btn-sm" href="@link.Url" target="_blank" rel="noopener noreferrer">@link.Site</a>
-                                </li>
-                            }
-                        </ul>
-                        <p class="muted small">Availability depends on your country.</p>
-                    }
-                    else
-                    {
-                        <p class="muted">No streaming platform is known for this anime.</p>
-                    }
-                </section>
+                        @if (anime.StreamingLinks.Count > 0)
+                        {
+                            <ul class="watch-links">
+                                @foreach (var link in anime.StreamingLinks)
+                                {
+                                    <li>
+                                        <a class="btn btn-ghost btn-sm" href="@link.Url" target="_blank" rel="noopener noreferrer">@link.Site</a>
+                                    </li>
+                                }
+                            </ul>
+                            <p class="muted small">Availability depends on your country.</p>
+                        }
+                        else
+                        {
+                            <p class="muted">No streaming platform is known for this anime.</p>
+                        }
+                    </section>
+                }
 
                 <div class="actions">
                     @if (userId is null)
                     {
                         <a class="btn" href="@Navigation.GetLoginUrl()">Log in to add to my list</a>
+                    }
+                    else if (anime.IsCustom)
+                    {
+                        // Removing an anime added by hand deletes it, so it asks first.
+                        @if (confirmingDelete)
+                        {
+                            <button type="button" class="btn btn-danger" @onclick="ToggleAsync">
+                                <Icon Name="trash" Size="16" /> Yes, delete it for good
+                            </button>
+                            <button type="button" class="btn btn-ghost" @onclick="() => confirmingDelete = false">Keep it</button>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-danger" @onclick="() => confirmingDelete = true">
+                                <Icon Name="trash" Size="16" /> Delete this anime
+                            </button>
+                        }
                     }
                     else if (listed)
                     {
@@ -130,6 +160,7 @@
     private bool listed;
     private bool failed;
     private bool actionFailed;
+    private bool confirmingDelete;
     // The skeleton is part of the prerendered HTML; the interactive pass then loads for real.
     private bool loading = true;
 
@@ -153,10 +184,21 @@
 
         try
         {
-            anime = await AnimeService.GetAsync(Id);
             userId = await CurrentUser.GetUserIdAsync();
-            listed = anime is not null && userId is { } id
-                && (await WatchList.GetListedIdsAsync(id, [Id])).Contains(Id);
+            var includeAdult = userId is { } viewer && await Settings.ShowsAdultContentAsync(viewer);
+
+            if (Id <= 0)
+            {
+                // An anime added by hand: private, so only its owner can open it.
+                anime = userId is { } owner ? await CustomAnimes.GetAsync(owner, Id) : null;
+                listed = anime is not null;
+            }
+            else
+            {
+                anime = await AnimeService.GetAsync(Id, includeAdult);
+                listed = anime is not null && userId is { } id
+                    && (await WatchList.GetListedIdsAsync(id, [Id])).Contains(Id);
+            }
         }
         catch (AnimeProviderUnavailableException)
         {
@@ -183,6 +225,13 @@
         actionFailed = false;
         try
         {
+            if (anime?.IsCustom == true)
+            {
+                await WatchList.RemoveAsync(id, Id);
+                Navigation.NavigateTo("my-list");
+                return;
+            }
+
             if (listed)
             {
                 await WatchList.RemoveAsync(id, Id);

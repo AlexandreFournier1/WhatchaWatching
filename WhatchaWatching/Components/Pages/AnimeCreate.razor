@@ -1,0 +1,140 @@
+@page "/anime/new"
+@attribute [Authorize]
+@using System.ComponentModel.DataAnnotations
+@using WhatchaWatching.Common.Constants
+@inject ICustomAnimeService CustomAnimes
+@inject ICurrentUser CurrentUser
+@inject NavigationManager Navigation
+@inject ILogger<AnimeCreate> Logger
+
+<PageTitle>Add an anime - WhatchaWatching</PageTitle>
+
+<section class="page-section">
+    <div class="form-card">
+        <header class="page-header">
+            <h1>Add an anime by hand</h1>
+            <p class="muted">
+                Use this only when searching does not find it. The anime goes into your list and nobody else can see it.
+            </p>
+        </header>
+
+        <EditForm Model="model" OnValidSubmit="SaveAsync" class="custom-form">
+            <DataAnnotationsValidator />
+
+            <div class="field">
+                <label for="title">Title</label>
+                <InputText id="title" class="input" @bind-Value="model.Title" maxlength="@ConfigurationConstants.LARGE_SIZE" />
+                <ValidationMessage For="() => model.Title" />
+            </div>
+
+            <div class="field">
+                <label for="original">Original title <span class="muted">(optional)</span></label>
+                <InputText id="original" class="input" @bind-Value="model.OriginalTitle" maxlength="@ConfigurationConstants.LARGE_SIZE" />
+                <ValidationMessage For="() => model.OriginalTitle" />
+            </div>
+
+            <div class="field">
+                <label for="synopsis">Summary <span class="muted">(optional)</span></label>
+                <InputTextArea id="synopsis" class="input" rows="5" @bind-Value="model.Synopsis" maxlength="@ConfigurationConstants.XXXL_SIZE" />
+                <ValidationMessage For="() => model.Synopsis" />
+            </div>
+
+            <div class="field">
+                <label for="image">Poster address <span class="muted">(optional)</span></label>
+                <InputText id="image" type="url" class="input" placeholder="https://..." @bind-Value="model.ImageUrl" maxlength="@ConfigurationConstants.LARGE_SIZE" />
+                <small class="muted">The address of an image on the web, starting with https://.</small>
+                <ValidationMessage For="() => model.ImageUrl" />
+            </div>
+
+            <div class="row">
+                <div class="field">
+                    <label for="episodes">Episodes <span class="muted">(optional)</span></label>
+                    <InputNumber id="episodes" class="input" @bind-Value="model.EpisodeCount" />
+                    <ValidationMessage For="() => model.EpisodeCount" />
+                </div>
+
+                <div class="field">
+                    <label for="duration">Minutes per episode <span class="muted">(optional)</span></label>
+                    <InputNumber id="duration" class="input" @bind-Value="model.EpisodeDurationMinutes" />
+                    <ValidationMessage For="() => model.EpisodeDurationMinutes" />
+                </div>
+
+                <div class="field">
+                    <label for="year">Year <span class="muted">(optional)</span></label>
+                    <InputNumber id="year" class="input" @bind-Value="model.Year" />
+                    <ValidationMessage For="() => model.Year" />
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="field">
+                    <label for="status">Status</label>
+                    <InputSelect id="status" class="input" @bind-Value="model.Status">
+                        <option value="@MediaStatus.Finished">Finished airing</option>
+                        <option value="@MediaStatus.Airing">Currently airing</option>
+                        <option value="@MediaStatus.Upcoming">Not yet aired</option>
+                    </InputSelect>
+                </div>
+
+                <div class="field">
+                    <span class="label">Genres <span class="muted">(optional)</span></span>
+                    <FilterDropdown Label="Choose genres" Multiple="true" Options="genreNames"
+                                    Selected="model.Genres" SelectedChanged="OnGenresChanged" />
+                </div>
+            </div>
+
+            @if (error is not null)
+            {
+                <p class="validation-message" role="alert">@error</p>
+            }
+
+            <div class="buttons">
+                <button type="submit" class="btn" disabled="@saving">@(saving ? "Saving..." : "Add to my list")</button>
+                <a class="btn btn-ghost" href="my-list">Cancel</a>
+            </div>
+        </EditForm>
+    </div>
+</section>
+
+@code {
+    private static readonly IReadOnlyList<string> genreNames = GenreCatalog.All.Select(g => g.Name).Order().ToList();
+
+    private readonly CustomAnimeDto model = new();
+    private bool saving;
+    private string? error;
+
+    private void OnGenresChanged(IReadOnlyCollection<string> selected) => model.Genres = selected.ToList();
+
+    private async Task SaveAsync()
+    {
+        if (saving)
+        {
+            return;
+        }
+
+        saving = true;
+        error = null;
+
+        try
+        {
+            var userId = await CurrentUser.GetUserIdAsync() ?? throw new InvalidOperationException("Not signed in.");
+            var created = await CustomAnimes.CreateAsync(userId, model);
+
+            Navigation.NavigateTo($"anime/{created.Id}");
+        }
+        catch (ValidationException ex)
+        {
+            // The service's messages are written for users ("You can add up to 200 anime by hand...").
+            error = ex.Message;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger.LogError(ex, "An anime added by hand could not be saved.");
+            error = "The anime could not be saved. Try again in a moment.";
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

@@ -13,4 +13,5 @@ internal record AniListMedia(
     string? Season,
     AniListDate? StartDate,
     List<string>? Genres,
+    bool? IsAdult,
     List<AniListExternalLink>? ExternalLinks);

@@ -41,6 +41,7 @@ builder.Services.AddIdentityCore<UserEntity>(options =>
     .AddSignInManager();
 
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+builder.Services.AddScoped<AdultFilterState>();
 
 var app = builder.Build();
 

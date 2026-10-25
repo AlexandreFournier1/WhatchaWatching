@@ -15,6 +15,9 @@ public class UserEntityConfiguration : IEntityTypeConfiguration<UserEntity>
         builder.Property(u => u.CreatedAt)
             .IsRequired();
 
+        builder.Property(u => u.ShowAdultContent)
+            .IsRequired();
+
         builder.Property(u => u.UpdatedAt)
             .IsRequired();
 

@@ -13,6 +13,16 @@
             <h3><a href="anime/@Anime.Id">@Anime.Title</a></h3>
             <p class="meta">@AnimeDisplay.Duration(Anime)</p>
 
+            @if (Anime.IsAdult)
+            {
+                <span class="chip chip-adult">18+</span>
+            }
+
+            @if (Anime.IsCustom)
+            {
+                <span class="chip">Added by you</span>
+            }
+
             @if (Featured && Anime.Genres.Count > 0)
             {
                 <div class="chip-list">

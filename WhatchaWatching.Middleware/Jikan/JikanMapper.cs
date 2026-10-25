@@ -30,8 +30,16 @@ internal static partial class JikanMapper
             anime.Season,
             anime.Rating,
             releaseDate,
-            ToGenres(anime.Genres));
+            ToGenres((anime.Genres ?? []).Concat(anime.ExplicitGenres ?? [])))
+        {
+            IsAdult = IsAdult(anime)
+        };
     }
+
+    // Jikan lists the adult genres (Hentai, Erotica) apart, as "explicit genres", and rates hentai "Rx".
+    private static bool IsAdult(JikanAnime anime) =>
+        anime.ExplicitGenres is { Count: > 0 } ||
+        anime.Rating?.StartsWith("Rx", StringComparison.OrdinalIgnoreCase) == true;
 
     public static ExternalGenreDto ToDto(JikanGenre genre) => new(genre.MalId, genre.Name ?? string.Empty);
 

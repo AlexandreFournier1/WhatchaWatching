@@ -281,5 +281,52 @@ public class AniListClientTests
         Assert.DoesNotContain("externalLinks", bodies[0]);
         Assert.Contains("externalLinks", bodies[1]);
     }
+
+    [Fact]
+    public async Task Search_IsSafeForWorkByDefaultAndLiftsTheFilterOnRequest()
+    {
+        var bodies = new List<string>();
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            bodies.Add(request.Content!.ReadAsStringAsync().Result);
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("""{ "data": { "Page": { "media": [] } } }""") };
+        });
+        var client = CreateClient(handler);
+
+        await client.SearchAnimeAsync("x", 1);
+        await client.SearchAnimeAsync("x", 1, includeAdult: true);
+
+        Assert.Contains("isAdult: false", bodies[0]);
+        // "isAdult: null" would still hide them: the filter has to be absent.
+        Assert.DoesNotContain("isAdult:", bodies[1]);
+    }
+
+    [Fact]
+    public async Task GetAnime_NeverFiltersAndFlagsAdultAnimeAndTheirGenre()
+    {
+        string? body = null;
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            body = request.Content!.ReadAsStringAsync().Result;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(MediaJson(""", "isAdult": true, "genres": ["Hentai", "Comedy"] """))
+            };
+        });
+
+        var anime = await CreateClient(handler).GetAnimeAsync(1);
+
+        Assert.DoesNotContain("isAdult:", body);
+        Assert.True(anime!.IsAdult);
+        Assert.Equal(["Hentai", "Comedy"], anime.Genres.Select(g => g.Name));
+    }
+
+    [Fact]
+    public async Task GetAnime_WithoutTheAdultFlag_IsNotAdult()
+    {
+        var anime = await CreateClient(StubHttpMessageHandler.Json(MediaJson(""))).GetAnimeAsync(1);
+
+        Assert.False(anime!.IsAdult);
+    }
 }
 

@@ -2,6 +2,8 @@
 @inject IRandomPickerService Picker
 @inject IWatchListService WatchList
 @inject ICurrentUser CurrentUser
+@inject IUserSettingsService Settings
+@inject AdultFilterState AdultState
 @inject NavigationManager Navigation
 @inject ILogger<Home> Logger
 
@@ -15,6 +17,8 @@
         <button type="button" class="btn" aria-expanded="@(showConditions ? "true" : "false")"
                 @onclick="ToggleConditions">Find me something like...</button>
     </div>
+
+    <AdultSwitch Visible="profileAllowsAdult" Value="AdultState.Enabled" ValueChanged="OnAdultChanged" />
 
     @if (showConditions)
     {
@@ -77,11 +81,31 @@
 
     private State state = State.Idle;
     private bool showConditions;
+    private bool profileAllowsAdult;
     private bool loading => state == State.Loading;
     private AnimeSummaryDto? pick;
     private IReadOnlyList<string> genreOptions = [];
     private IReadOnlyCollection<string> genres = [];
     private IReadOnlyCollection<string> duration = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        // The switch only exists for someone whose profile allows adult content. Nothing to read while prerendering.
+        if (RendererInfo.IsInteractive && await CurrentUser.GetUserIdAsync() is { } userId)
+        {
+            try
+            {
+                profileAllowsAdult = await Settings.ShowsAdultContentAsync(userId);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Without the switch the pick still works, with the profile's own setting.
+                Logger.LogError(ex, "The adult content setting could not be read.");
+            }
+        }
+    }
+
+    private void OnAdultChanged(bool enabled) => AdultState.Enabled = enabled;
 
     private async Task Surprise()
     {
@@ -138,7 +162,8 @@
         state = State.Loading;
         try
         {
-            var filter = FilterOptions.ToFilter(genres, duration);
+            // The switch can only hide adult anime: the service shows them only if the profile allows it too.
+            var filter = FilterOptions.ToFilter(genres, duration) with { IncludeAdult = AdultState.Enabled };
             pick = await Picker.PickAsync(userId.Value, filter, pick?.Id);
             state = pick is null ? State.Nothing : State.Picked;
         }

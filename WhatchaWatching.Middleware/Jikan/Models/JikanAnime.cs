@@ -15,4 +15,5 @@ internal record JikanAnime(
     int? Year,
     JikanImages? Images,
     JikanAired? Aired,
-    List<JikanGenre>? Genres);
+    List<JikanGenre>? Genres,
+    List<JikanGenre>? ExplicitGenres);

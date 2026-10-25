@@ -10,13 +10,16 @@ public class StubProvider : IAnimeProvider
 {
     public int Calls { get; private set; }
 
+    public bool? LastIncludeAdult { get; private set; }
+
     public Exception? Failure { get; set; }
 
     public ExternalAnimeDto? Anime { get; set; }
 
-    public Task<PagedResultDto<ExternalAnimeDto>> SearchAnimeAsync(string query, int page, CancellationToken cancellationToken = default)
+    public Task<PagedResultDto<ExternalAnimeDto>> SearchAnimeAsync(string query, int page, bool includeAdult = false, CancellationToken cancellationToken = default)
     {
         Calls++;
+        LastIncludeAdult = includeAdult;
         if (Failure is not null)
         {
             throw Failure;

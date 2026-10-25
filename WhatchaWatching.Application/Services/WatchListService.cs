@@ -20,9 +20,13 @@ public class WatchListService(
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
+        var showAdult = await UserSettingsService.ShowsAdultContentAsync(context, userId, cancellationToken)
+            && (filter?.IncludeAdult ?? true);
+
         var items = await context.WatchListItems
             .AsNoTracking()
             .ForUser(userId)
+            .ApplyAdultContent(showAdult)
             .ApplyFilter(filter)
             .ApplySort(sort)
             .Include(i => i.Media)
@@ -37,9 +41,12 @@ public class WatchListService(
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
+        var showAdult = await UserSettingsService.ShowsAdultContentAsync(context, userId, cancellationToken);
+
         return await context.WatchListItems
             .AsNoTracking()
             .ForUser(userId)
+            .ApplyAdultContent(showAdult)
             .SelectMany(i => i.Media.MediaGenres.Select(mg => mg.Genre.Name))
             .Distinct()
             .OrderBy(name => name)
@@ -75,7 +82,13 @@ public class WatchListService(
         }
 
         // Makes sure the anime is stored locally before the list points to it.
-        if (await animeService.GetAsync(externalId, cancellationToken) is null)
+        bool showAdult;
+        await using (var settingsContext = await contextFactory.CreateDbContextAsync(cancellationToken))
+        {
+            showAdult = await UserSettingsService.ShowsAdultContentAsync(settingsContext, userId, cancellationToken);
+        }
+
+        if (await animeService.GetAsync(externalId, showAdult, cancellationToken) is null)
         {
             return WatchListAddResult.AnimeNotFound;
         }
@@ -121,6 +134,18 @@ public class WatchListService(
         }
 
         context.WatchListItems.Remove(item);
+
+        // An anime the user added by hand exists only for their list: removing it from the list deletes it, so that no
+        // invisible leftover stays in the database. A shared anime stays, other users may list it.
+        var custom = await context.Media
+            .Include(m => m.MediaGenres)
+            .Include(m => m.StreamingLinks)
+            .FirstOrDefaultAsync(m => m.Id == item.MediaId && m.CreatedByUserId == userId, cancellationToken);
+        if (custom is not null)
+        {
+            context.Media.Remove(custom);
+        }
+
         await context.SaveChangesAsync(cancellationToken);
 
         return true;

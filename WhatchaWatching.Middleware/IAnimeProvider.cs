@@ -6,7 +6,9 @@ namespace WhatchaWatching.Middleware;
 public interface IAnimeProvider
 {
     /// <exception cref="ExternalApiException">The provider cannot be reached or fails.</exception>
-    Task<PagedResultDto<ExternalAnimeDto>> SearchAnimeAsync(string query, int page, CancellationToken cancellationToken = default);
+    /// <param name="includeAdult">False asks the provider for safe-for-work anime only.</param>
+    Task<PagedResultDto<ExternalAnimeDto>> SearchAnimeAsync(
+        string query, int page, bool includeAdult = false, CancellationToken cancellationToken = default);
 
     /// <summary>Returns null when the provider has no anime with this id.</summary>
     /// <exception cref="ExternalApiException">The provider cannot be reached or fails.</exception>

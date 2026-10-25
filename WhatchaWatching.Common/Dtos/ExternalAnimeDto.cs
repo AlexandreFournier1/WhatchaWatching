@@ -21,4 +21,7 @@ public record ExternalAnimeDto(
 {
     /// <summary>Streaming platforms offering the anime. Empty when unknown.</summary>
     public IReadOnlyList<StreamingLinkDto> StreamingLinks { get; init; } = [];
+
+    /// <summary>True for adult anime (Hentai and the like), which are only shown to users who turned adult content on.</summary>
+    public bool IsAdult { get; init; }
 }

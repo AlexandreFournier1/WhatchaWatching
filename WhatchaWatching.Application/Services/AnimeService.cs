@@ -21,7 +21,7 @@ public class AnimeService(
     private static readonly TimeSpan SyncMaxAge = TimeSpan.FromDays(7);
 
     public async Task<AnimeSearchResultDto> SearchAsync(
-        string query, int page, CancellationToken cancellationToken = default)
+        string query, int page, bool includeAdult = false, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(query))
         {
@@ -30,9 +30,11 @@ public class AnimeService(
 
         try
         {
-            var result = await animeProvider.SearchAnimeAsync(query, page, cancellationToken);
+            var result = await animeProvider.SearchAnimeAsync(query, page, includeAdult, cancellationToken);
+
+            // The provider was asked for safe anime already; this keeps an adult one out if it slips through.
             var results = new PagedResultDto<AnimeSummaryDto>(
-                result.Items.Select(AnimeMapper.ToSummary).ToList(),
+                result.Items.Where(a => includeAdult || !a.IsAdult).Select(AnimeMapper.ToSummary).ToList(),
                 result.Page,
                 result.TotalPages,
                 result.TotalItems);
@@ -42,19 +44,19 @@ public class AnimeService(
         catch (ExternalApiException ex)
         {
             logger.LogWarning(ex, "No anime provider answered the search, looking in the stored anime.");
-            return await SearchStoredAsync(query.Trim(), page, ex, cancellationToken);
+            return await SearchStoredAsync(query.Trim(), page, includeAdult, ex, cancellationToken);
         }
     }
 
     /// <summary>The last resort of a search: the anime this site already stored when they were opened or added.</summary>
     private async Task<AnimeSearchResultDto> SearchStoredAsync(
-        string query, int page, ExternalApiException cause, CancellationToken cancellationToken)
+        string query, int page, bool includeAdult, ExternalApiException cause, CancellationToken cancellationToken)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
         var matches = context.Media
             .AsNoTracking()
-            .Where(m => m.Type == MediaType.Anime &&
+            .Where(m => m.Type == MediaType.Anime && m.CreatedByUserId == null && (includeAdult || !m.IsAdult) &&
                         (m.Title.Contains(query) || (m.OriginalTitle != null && m.OriginalTitle.Contains(query))));
 
         var total = await matches.CountAsync(cancellationToken);
@@ -82,8 +84,24 @@ public class AnimeService(
         return new AnimeSearchResultDto(results, IsLocalOnly: true);
     }
 
-    public async Task<AnimeSummaryDto?> GetAsync(int externalId, CancellationToken cancellationToken = default)
+    public async Task<AnimeSummaryDto?> GetAsync(
+        int externalId, bool includeAdult = false, CancellationToken cancellationToken = default)
     {
+        var anime = await GetCoreAsync(externalId, includeAdult, cancellationToken);
+
+        // An adult anime does not exist for someone who did not turn adult content on.
+        return anime is { IsAdult: true } && !includeAdult ? null : anime;
+    }
+
+    private async Task<AnimeSummaryDto?> GetCoreAsync(int externalId, bool includeAdult, CancellationToken cancellationToken)
+    {
+        // Provider ids are positive. A zero or negative id is an anime added by hand (never in the shared catalog) or junk:
+        // asking a provider about it would only waste a call, and a failure would make the next requests skip Jikan.
+        if (externalId <= 0)
+        {
+            return null;
+        }
+
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
         var stored = await FindStoredAsync(context, externalId, cancellationToken);
@@ -115,6 +133,12 @@ public class AnimeService(
             return stored is null ? null : AnimeMapper.ToSummary(stored);
         }
 
+        // Nothing is stored on behalf of someone who may not see it.
+        if (external.IsAdult && !includeAdult)
+        {
+            return null;
+        }
+
         try
         {
             return await StoreAsync(context, stored, external, now, cancellationToken);
@@ -137,7 +161,10 @@ public class AnimeService(
             .ThenInclude(mg => mg.Genre)
             .Include(m => m.StreamingLinks)
             .AsSplitQuery()
-            .FirstOrDefaultAsync(m => m.Type == MediaType.Anime && m.ExternalId == externalId, cancellationToken);
+            // An anime added by hand belongs to its user: the shared lookup never returns it, whatever the id.
+            .FirstOrDefaultAsync(
+                m => m.Type == MediaType.Anime && m.ExternalId == externalId && m.CreatedByUserId == null,
+                cancellationToken);
 
     private static async Task<AnimeSummaryDto> StoreAsync(
         ApplicationDbContext context,
@@ -153,7 +180,7 @@ public class AnimeService(
         }
 
         AnimeMapper.Apply(media, external, syncedAt);
-        await SyncGenresAsync(context, media, external.Genres, cancellationToken);
+        await MediaGenreSync.SyncAsync(context, media, external.Genres, cancellationToken);
         SyncStreamingLinks(context, media, external.StreamingLinks);
         await context.SaveChangesAsync(cancellationToken);
 
@@ -186,35 +213,6 @@ public class AnimeService(
             {
                 stored.Site = link.Site;
             }
-        }
-    }
-
-    /// <summary>Makes the anime link exactly the given genres, reusing the genres already stored.</summary>
-    private static async Task SyncGenresAsync(
-        ApplicationDbContext context,
-        MediaEntity media,
-        IReadOnlyList<ExternalGenreDto> genres,
-        CancellationToken cancellationToken)
-    {
-        var wantedIds = genres.Select(g => g.ExternalId).ToList();
-        var known = await context.Genres
-            .Where(g => wantedIds.Contains(g.ExternalId))
-            .ToDictionaryAsync(g => g.ExternalId, cancellationToken);
-
-        foreach (var genre in genres.Where(g => !known.ContainsKey(g.ExternalId)))
-        {
-            var created = new GenreEntity { ExternalId = genre.ExternalId, Name = genre.Name };
-            context.Genres.Add(created);
-            known[genre.ExternalId] = created;
-        }
-
-        var outdated = media.MediaGenres.Where(mg => !wantedIds.Contains(mg.Genre.ExternalId)).ToList();
-        context.MediaGenres.RemoveRange(outdated);
-
-        var linked = media.MediaGenres.Except(outdated).Select(mg => mg.Genre.ExternalId).ToHashSet();
-        foreach (var genreId in wantedIds.Where(id => !linked.Contains(id)).Distinct())
-        {
-            media.MediaGenres.Add(new MediaGenreEntity { Media = media, Genre = known[genreId] });
         }
     }
 }

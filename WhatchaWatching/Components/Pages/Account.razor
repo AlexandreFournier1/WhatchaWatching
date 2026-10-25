@@ -1,6 +1,8 @@
 @page "/account"
 @attribute [Authorize]
 @attribute [ExcludeFromInteractiveRouting]
+@inject IUserSettingsService Settings
+@inject ICurrentUser CurrentUser
 
 <PageTitle>My account - WhatchaWatching</PageTitle>
 
@@ -25,4 +27,69 @@
             </form>
         </div>
     </AuthorizeView>
+
+    <EditForm Model="Input" method="post" OnValidSubmit="SaveAsync" FormName="content-settings" class="card form">
+        <h2>Content</h2>
+
+        <label class="remember">
+            <InputCheckbox @bind-Value="Input.ShowAdultContent" /> Show adult content (18+)
+        </label>
+        <p class="muted small">
+            Adult anime (hentai and the like) are hidden by default: they do not show up in searches, in your list or
+            in the random pick. By turning this on you confirm that you are at least 18 years old and that you are
+            allowed to see such content where you live.
+        </p>
+
+        @if (saved)
+        {
+            <p class="notice" role="status">Saved.</p>
+        }
+
+        @if (failed)
+        {
+            <p class="validation-message" role="alert">The setting could not be saved. Try again in a moment.</p>
+        }
+
+        <button type="submit" class="btn">Save</button>
+    </EditForm>
 </section>
+
+@code {
+    private bool saved;
+    private bool failed;
+
+    [SupplyParameterFromForm]
+    private ContentSettings Input { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // After a post the form has already filled Input: the stored value must not replace what was just sent.
+        if (Input is null)
+        {
+            var userId = await CurrentUser.GetUserIdAsync();
+            Input = new ContentSettings { ShowAdultContent = userId is { } id && await Settings.ShowsAdultContentAsync(id) };
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        saved = false;
+        failed = false;
+
+        try
+        {
+            var userId = await CurrentUser.GetUserIdAsync() ?? throw new InvalidOperationException("Not signed in.");
+            await Settings.SetShowsAdultContentAsync(userId, Input.ShowAdultContent);
+            saved = true;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            failed = true;
+        }
+    }
+
+    private sealed class ContentSettings
+    {
+        public bool ShowAdultContent { get; set; }
+    }
+}

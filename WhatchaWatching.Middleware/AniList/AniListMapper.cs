@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.RegularExpressions;
+using WhatchaWatching.Common.Constants;
 using WhatchaWatching.Common.Dtos;
 using WhatchaWatching.Common.Enum;
 using WhatchaWatching.Middleware.AniList.Models;
@@ -10,28 +11,20 @@ internal static partial class AniListMapper
 {
     // AniList names its genres but gives them no id. The stored genres use MyAnimeList ids (the ones Jikan returns),
     // so a genre is translated by name. A genre this table does not know is left out rather than stored with a made-up id.
-    private static readonly Dictionary<string, ExternalGenreDto> Genres = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, ExternalGenreDto> Genres = BuildGenres();
+
+    private static Dictionary<string, ExternalGenreDto> BuildGenres()
     {
-        ["Action"] = new(1, "Action"),
-        ["Adventure"] = new(2, "Adventure"),
-        ["Comedy"] = new(4, "Comedy"),
-        ["Drama"] = new(8, "Drama"),
-        ["Ecchi"] = new(9, "Ecchi"),
-        ["Fantasy"] = new(10, "Fantasy"),
-        ["Hentai"] = new(12, "Hentai"),
-        ["Horror"] = new(14, "Horror"),
-        ["Mecha"] = new(18, "Mecha"),
-        ["Music"] = new(19, "Music"),
-        ["Mystery"] = new(7, "Mystery"),
-        ["Psychological"] = new(40, "Psychological"),
-        ["Romance"] = new(22, "Romance"),
-        ["Sci-Fi"] = new(24, "Sci-Fi"),
-        ["Slice of Life"] = new(36, "Slice of Life"),
-        ["Sports"] = new(30, "Sports"),
-        ["Supernatural"] = new(37, "Supernatural"),
-        ["Mahou Shoujo"] = new(66, "Mahou Shoujo"),
-        ["Thriller"] = new(41, "Suspense")
-    };
+        var genres = GenreCatalog.All.ToDictionary(g => g.Name, StringComparer.OrdinalIgnoreCase);
+
+        // The one AniList genre whose name differs from MyAnimeList's.
+        genres["Thriller"] = genres["Suspense"];
+
+        // Adult genres are not offered when adding an anime by hand, but the anime that have one must show it.
+        genres["Hentai"] = new ExternalGenreDto(12, "Hentai");
+
+        return genres;
+    }
 
     [GeneratedRegex(@"<br\s*/?>", RegexOptions.IgnoreCase)]
     private static partial Regex LineBreakPattern();
@@ -68,7 +61,8 @@ internal static partial class AniListMapper
             releaseDate,
             ToGenres(media.Genres))
         {
-            StreamingLinks = ToStreamingLinks(media.ExternalLinks)
+            StreamingLinks = ToStreamingLinks(media.ExternalLinks),
+            IsAdult = media.IsAdult == true
         };
     }
 

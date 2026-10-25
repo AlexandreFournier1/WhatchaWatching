@@ -118,4 +118,15 @@ public class FallbackAnimeProviderTests
 
         Assert.Equal(0, _aniList.Calls);
     }
+
+    [Fact]
+    public async Task Search_PassesTheAdultChoiceToTheProvider()
+    {
+        await _provider.SearchAnimeAsync("x", 1, includeAdult: true);
+        Assert.True(_jikan.LastIncludeAdult);
+
+        _jikan.Failure = new ExternalApiException("down");
+        await _provider.SearchAnimeAsync("x", 1);
+        Assert.False(_aniList.LastIncludeAdult);
+    }
 }

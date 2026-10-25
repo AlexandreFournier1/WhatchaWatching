@@ -20,9 +20,13 @@ public class RandomPickerService(
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
+        var showAdult = await UserSettingsService.ShowsAdultContentAsync(context, userId, cancellationToken)
+            && (filter?.IncludeAdult ?? true);
+
         var matches = context.WatchListItems
             .AsNoTracking()
             .ForUser(userId)
+            .ApplyAdultContent(showAdult)
             .ApplyFilter(filter);
 
         if (excludeExternalId is { } excluded && await matches.CountAsync(cancellationToken) > 1)

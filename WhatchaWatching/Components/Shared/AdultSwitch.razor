@@ -1,0 +1,23 @@
+@* Shown only when the profile allows adult content: the parent decides with Visible. *@
+@if (Visible)
+{
+    <button type="button" class="adult-switch" role="switch" aria-checked="@(Value ? "true" : "false")"
+            title="Adult content is allowed in your account settings. This switch shows or hides it here."
+            @onclick="Toggle">
+        <span class="track" aria-hidden="true"><span class="thumb"></span></span>
+        <span class="text">Adult content (18+): <strong>@(Value ? "on" : "off")</strong></span>
+    </button>
+}
+
+@code {
+    [Parameter]
+    public bool Visible { get; set; }
+
+    [Parameter]
+    public bool Value { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> ValueChanged { get; set; }
+
+    private Task Toggle() => ValueChanged.InvokeAsync(!Value);
+}

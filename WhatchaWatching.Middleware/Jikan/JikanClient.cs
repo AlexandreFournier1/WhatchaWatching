@@ -16,13 +16,13 @@ public sealed class JikanClient(HttpClient httpClient) : IJikanClient
     };
 
     public async Task<PagedResultDto<ExternalAnimeDto>> SearchAnimeAsync(
-        string query, int page, CancellationToken cancellationToken = default)
+        string query, int page, bool includeAdult = false, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(query);
         var currentPage = Math.Max(page, 1);
 
         var url = $"anime?q={Uri.EscapeDataString(query.Trim())}&page={currentPage}" +
-                  $"&limit={ExternalApiConstants.SEARCH_PAGE_SIZE}&sfw=true";
+                  $"&limit={ExternalApiConstants.SEARCH_PAGE_SIZE}" + (includeAdult ? string.Empty : "&sfw=true");
         var response = await GetAsync<JikanListResponse<JikanAnime>>(url, cancellationToken);
 
         var items = (response?.Data ?? []).Select(JikanMapper.ToDto).ToList();

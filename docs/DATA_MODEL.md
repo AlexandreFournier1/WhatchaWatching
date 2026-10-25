@@ -40,6 +40,7 @@ erDiagram
         string Rating
         string ImageUrl
         datetime LastSyncedAt
+        int CreatedByUserId FK "set for an anime added by hand"
         datetime CreatedAt
         datetime UpdatedAt
     }
@@ -91,8 +92,11 @@ A title (anime for now) cached from Jikan.
 | Year / Season | int / string | yes | Filters for the random picker. |
 | Rating | string(64) | yes | Age rating. |
 | ImageUrl | string(512) | yes | |
-| LastSyncedAt | datetime | yes | When it was last refreshed from Jikan. |
+| LastSyncedAt | datetime | yes | When it was last refreshed from a provider. |
+| CreatedByUserId | int | yes | FK → User. Set for an anime a user **added by hand**: it is private to that user, has a negative `ExternalId` (counting down from -1, so it never meets a provider id) and no provider data. Null for the shared catalog. |
+| IsAdult | bool | no | Default false. Hentai and the like, as flagged by the provider (Jikan: rating "Rx" or explicit genres; AniList: `isAdult`). Only shown to users whose `ShowAdultContent` is true. |
 | CreatedAt / UpdatedAt | datetime (UTC) | no | Set in `SaveChangesAsync`. |
+| ShowAdultContent | bool | no | Default false. The user chose to see adult anime (Account page, with a confirmation of being 18 or older). |
 
 Indexes: unique `(Type, ExternalId)`; non-unique `Type`, `Status`.
 
@@ -127,6 +131,7 @@ A streaming platform where a media can be watched legally (Crunchyroll, Netflix.
 | Field | Type | Null | Notes |
 |---|---|---|---|
 | CreatedAt / UpdatedAt | datetime (UTC) | no | Set in `SaveChangesAsync`. |
+| ShowAdultContent | bool | no | Default false. The user chose to see adult anime (Account page, with a confirmation of being 18 or older). |
 | WatchListItems | collection | | Navigation to the user's watchlist. |
 
 Indexes: unique `UserNameIndex` on `NormalizedUserName` (Identity default); unique `EmailIndex` on `NormalizedEmail` (Identity creates it non-unique, so the project makes it unique).
@@ -153,6 +158,7 @@ Indexes: unique `(UserId, MediaId)`, so a media can appear once per user (it als
 | Media → WatchListItem | **Restrict**. Media is shared catalog data and cannot be removed while someone lists it. |
 | Media → MediaGenre | Cascade |
 | Media → StreamingLink | Cascade |
+| User → Media (`CreatedByUserId`) | **Restrict**. The app does not delete users yet; when it does, their anime added by hand must be deleted first, since losing the owner would make them public. |
 | Genre → MediaGenre | Cascade |
 
 ## Conventions
@@ -234,9 +240,12 @@ The connection string lives in the web project's user-secrets (`ConnectionString
 
 ## Decisions
 
+
 - **Authentication:** ASP.NET Core Identity, with an `int` key, cookie authentication, username + email + password (8 characters minimum, one digit, unique email). No email confirmation yet. Done in the web app (`Program.cs`, static Login/Register/Account pages, `ICurrentUser`).
 - **`MediaType` scope:** all four values (Anime, Manga, Movie, TVShow) are kept. Only Anime is populated for now.
 - **No user rating:** the app stays basic. Users do not rate or annotate what they watch, so `WatchListItem` has no `UserScore` or `Notes`. `Media.Score` (the MyAnimeList score from Jikan) is kept, as a filter for the random picker.
+- **Adult content:** hidden by default. A user can turn it on in the account page (`Users.ShowAdultContent`); a switch next to the search and the random pick (`AdultFilterState`, kept for the browser session, default on) then lets them hide it again for the moment, but never show more than the profile allows (`WatchListFilterDto.IncludeAdult`). When on, searches ask the providers for it, and adult anime (`Media.IsAdult`) appear in details, list, genres and random pick. Without it they do not exist for that user: details return "not found", nothing is stored on their behalf, and an already listed adult anime is hidden (not removed). Anonymous visitors never see them.
+- **Anime added by hand:** a user can add an anime the providers lack (`/anime/new`). It is private (only its owner sees it, in the list, the picker and its page), limited to 200 per user, and removing it from the list deletes it. Shared lookups (`AnimeService`, the stored-anime search) ignore it.
 - **No status:** the watchlist is only a "to watch" list. Items are added, then removed once watched, so there is no `WatchListItemStatus`, progress or dates. The random picker draws from the whole list.
 
 ## Database state
@@ -245,3 +254,5 @@ The connection string lives in the web project's user-secrets (`ConnectionString
 - `RemoveUserRating` (`20261024142320`) drops `UserScore`, `Notes` and `CK_WatchListItems_UserScore` from `WatchListItems`. Applied to AlwaysData on 2026-10-24.
 - `RemoveWatchListStatus` (`20261024144435`) drops `Status`, `Progress`, `StartDate`, `EndDate` and the index `(UserId, Status)` from `WatchListItems`. Applied to AlwaysData on 2026-10-24.
 - `AddStreamingLinks` (`20261025083911`) creates the table `StreamingLinks` (nothing existing is changed or deleted) and marks every stored `Media` as never synchronized (`LastSyncedAt = NULL`), so that each anime fetches its data again, with its links, the next time it is opened. Applied to AlwaysData on 2026-10-25, before the code that uses it was deployed.
+- `AddCustomAnimeOwner` (`20261025112036`) adds the nullable column `Media.CreatedByUserId`, its index and its foreign key to `Users`. Nothing existing is changed or deleted: every stored anime keeps a null owner, that is, stays in the shared catalog. **Not applied yet** to AlwaysData: apply it **before** deploying the code that uses it.
+- `AddAdultContentSetting` (`20261025112850`) adds `Users.ShowAdultContent` and `Media.IsAdult`, both `false` for every existing row, and marks every stored `Media` as never synchronized so each anime fetches its data again, with the adult flag, the next time it is opened. Nothing is deleted. **Not applied yet** to AlwaysData: apply it **before** deploying the code that uses it (together with `AddCustomAnimeOwner`, which is also pending).

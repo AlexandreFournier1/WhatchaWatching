@@ -192,6 +192,9 @@ namespace WhatchaWatching.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
                     b.Property<int?>("EpisodeCount")
                         .HasColumnType("int");
 
@@ -204,6 +207,9 @@ namespace WhatchaWatching.Infrastructure.Migrations
                     b.Property<string>("ImageUrl")
                         .HasMaxLength(512)
                         .HasColumnType("varchar(512)");
+
+                    b.Property<bool>("IsAdult")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<DateTime?>("LastSyncedAt")
                         .HasColumnType("datetime(6)");
@@ -256,6 +262,8 @@ namespace WhatchaWatching.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("Status");
 
@@ -361,6 +369,9 @@ namespace WhatchaWatching.Infrastructure.Migrations
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("longtext");
 
+                    b.Property<bool>("ShowAdultContent")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("tinyint(1)");
 
@@ -463,6 +474,16 @@ namespace WhatchaWatching.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("WhatchaWatching.Infrastructure.Data.Entities.MediaEntity", b =>
+                {
+                    b.HasOne("WhatchaWatching.Infrastructure.Data.Entities.UserEntity", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CreatedBy");
                 });
 
             modelBuilder.Entity("WhatchaWatching.Infrastructure.Data.Entities.MediaGenreEntity", b =>

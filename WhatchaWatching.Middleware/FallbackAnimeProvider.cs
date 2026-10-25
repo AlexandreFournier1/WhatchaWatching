@@ -19,8 +19,8 @@ public sealed class FallbackAnimeProvider(
     private const string ANILIST = "AniList";
 
     public Task<PagedResultDto<ExternalAnimeDto>> SearchAnimeAsync(
-        string query, int page, CancellationToken cancellationToken = default) =>
-        AskAsync(provider => provider.SearchAnimeAsync(query, page, cancellationToken));
+        string query, int page, bool includeAdult = false, CancellationToken cancellationToken = default) =>
+        AskAsync(provider => provider.SearchAnimeAsync(query, page, includeAdult, cancellationToken));
 
     public Task<ExternalAnimeDto?> GetAnimeAsync(int externalId, CancellationToken cancellationToken = default) =>
         AskAsync(provider => provider.GetAnimeAsync(externalId, cancellationToken));
