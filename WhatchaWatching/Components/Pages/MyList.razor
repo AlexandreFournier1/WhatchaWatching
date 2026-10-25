@@ -56,8 +56,16 @@
                 {
                     <AnimeCard Anime="anime" @key="anime.Id">
                         <button type="button" class="btn btn-danger btn-sm" title="@(anime.IsCustom ? "Remove and delete this anime" : "Remove from my list")"
+                                disabled="@removing.Contains(anime.Id)" aria-busy="@(removing.Contains(anime.Id) ? "true" : "false")"
                                 @onclick="() => RemoveAsync(anime.Id)">
-                            <Icon Name="trash" Size="16" /> Remove
+                            @if (removing.Contains(anime.Id))
+                            {
+                                <span class="spinner" aria-hidden="true"></span><span>Removing...</span>
+                            }
+                            else
+                            {
+                                <Icon Name="trash" Size="16" /><span>Remove</span>
+                            }
                         </button>
                     </AnimeCard>
                 }
@@ -70,6 +78,9 @@
     // Stays true while the page is prerendered: the skeleton is part of the first HTML.
     private bool loading = true;
     private bool busy;
+
+    // Anime being removed: their button shows a spinner and cannot be clicked again.
+    private readonly HashSet<int> removing = [];
     private bool failed;
     private int userId;
     private IReadOnlyList<AnimeSummaryDto> items = [];
@@ -133,6 +144,12 @@
 
     private async Task RemoveAsync(int externalId)
     {
+        // A second click while the first is still running would only repeat the request.
+        if (!removing.Add(externalId))
+        {
+            return;
+        }
+
         try
         {
             await WatchList.RemoveAsync(userId, externalId);
@@ -142,6 +159,10 @@
             Logger.LogError(ex, "Anime {ExternalId} could not be removed.", externalId);
             failed = true;
             return;
+        }
+        finally
+        {
+            removing.Remove(externalId);
         }
 
         await ReloadAsync();

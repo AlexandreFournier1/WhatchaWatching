@@ -255,3 +255,30 @@ a:hover { color: var(--accent-hover); }
 .manual-link { margin-top: 2rem; text-align: center; }
 
 .chip-adult { border-color: var(--accent); color: var(--accent); }
+
+/* ---------- Spinner (a request is running) ---------- */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.spinner {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    flex: none;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+}
+
+/* Feedback that something is happening: it keeps turning, slowly, even for people who asked for less motion. */
+@media (prefers-reduced-motion: reduce) {
+    .spinner {
+        animation-duration: 2s !important;
+        animation-iteration-count: infinite !important;
+    }
+}
+
+/* A button that is waiting for the server stays readable: the spinner must be seen. */
+.btn[aria-busy="true"]:disabled { opacity: .85; cursor: progress; }
