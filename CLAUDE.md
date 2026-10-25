@@ -17,8 +17,8 @@ Run from the repo root.
 - Build: `dotnet build`
 - Tests: `dotnet test` (must pass before every commit)
 - Restore local tools (`dotnet-ef`): `dotnet tool restore`
-- Run with Aspire (MySQL container included): `dotnet run --project WhatchaWatching.AppHost --launch-profile http` (dashboard at http://localhost:17069)
-- Run the web app alone: `dotnet run --project WhatchaWatching --launch-profile http` (needs a configured connection string)
+- Run with Aspire (MySQL container included): `dotnet run --project WhatchaWatching.AppHost --launch-profile http` (dashboard at http://localhost:15209)
+- Run the web app alone: `dotnet run --project WhatchaWatching --launch-profile http` (http://localhost:5209; needs a configured connection string)
 - Hot reload: `dotnet watch --project WhatchaWatching`
 
 `bin/`, `obj/` and `publish/` are build artifacts: ignore them.
