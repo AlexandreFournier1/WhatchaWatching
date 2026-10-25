@@ -15,7 +15,7 @@ WhatchaWatching is a Blazor Web App (.NET 10) to keep a list of the anime you wa
 - **Add an anime by hand** (`/anime/new`) when the providers do not have it. It is private to you, limited to 200 per user, and removing it from your list deletes it.
 - **Accounts** (ASP.NET Core Identity, cookies): sign up, log in, log out. Searching is open to everyone; the list, the picker and the account page need an account.
 - **Adult content** is hidden by default. It can be turned on in **My account** (with a confirmation of being 18 or older); a switch next to the search and the random pick can then hide it again for the visit. Adult anime are flagged by the providers and carry an "18+" mark.
-- A **footer** with the credits, the data sources and the version of the site with the commit it was built from (for example `v0.1.0 (cdade22)`).
+- A **footer** with the credits, the data sources and the version of the site with the commit it was built from (for example `v0.3.0 (d386362)`).
 
 ## Tech stack
 
@@ -99,7 +99,7 @@ The site runs on AlwaysData. Two Claude Code skills in `.claude/skills` automate
 
 - `/apply-migrations` previews the SQL of the pending migrations and applies them to the production database.
 - `/deploy-alwaysdata` builds, tests, publishes, uploads over SFTP, restarts the site and checks it answers. It needs an SSH key registered at AlwaysData and the `ALWAYSDATA_API_TOKEN` environment variable; its non-secret settings are in `.claude/skills/deploy-alwaysdata/config.json` (not committed).
-- `/commit-push` commits and pushes with a detailed message.
+- `/commit-push` commits and pushes with a detailed message, and raises the version of the site (`<Version>` in `WhatchaWatching/WhatchaWatching.csproj`, shown in the footer) from what the commit changes: a new feature raises the minor number, a fix the patch number, docs and tests alone nothing.
 
 When a release adds a migration, **apply the migration first, then deploy**: the previous code ignores a new column or table, but the new code needs it.
 

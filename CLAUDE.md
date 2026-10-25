@@ -50,7 +50,7 @@ Clean Architecture. Dependencies flow one way: **Web → Application → (Infras
 - **Errors**: outside Development, `/Error` + HSTS. `UseStatusCodePagesWithReExecute("/not-found")` backs the `NotFound` page.
 - **Styling**: no CSS framework. Design tokens (palette, radii, fonts) are CSS variables in `wwwroot/app.css`, which also holds the shared classes (`.btn`, `.input`, `.card`, `.anime-grid`...). Components use CSS isolation (`*.razor.css`). `ReconnectModal` has a collocated `.razor.js`.
 - **Static assets**: `app.MapStaticAssets()`, not `UseStaticFiles`.
-- **Version**: `<Version>` in `WhatchaWatching/WhatchaWatching.csproj` (bumped by hand when releasing). The footer shows it with the short commit the SDK adds to the informational version at build time (`AppVersion`), so a deployment can be told apart from the previous one. The commit is the one checked out when building: build from a clean, committed tree.
+- **Version**: `<Version>` in `WhatchaWatching/WhatchaWatching.csproj` (raised by the `/commit-push` skill from what the commit changes: `feat` is a minor bump, `fix` and the like a patch, docs/tests/tooling alone none; it can also be raised by hand). The footer shows it with the short commit the SDK adds to the informational version at build time (`AppVersion`), so a deployment can be told apart from the previous one. The commit is the one checked out when building: build from a clean, committed tree.
 - Nullable reference types and implicit usings are enabled everywhere.
 
 ### Aspire AppHost
