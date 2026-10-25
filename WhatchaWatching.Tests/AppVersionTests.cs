@@ -1,3 +1,4 @@
+using System.Reflection;
 using WhatchaWatching.Services;
 
 namespace WhatchaWatching.Tests;
@@ -24,8 +25,13 @@ public class AppVersionTests
     }
 
     [Fact]
-    public void Display_ForTheRunningSite_StartsWithTheProjectVersion()
+    public void Display_ForTheRunningSite_ShowsTheVersionOfTheAssembly()
     {
-        Assert.StartsWith("v0.1.0", AppVersion.Display);
+        // The version changes with every release (the commit-push skill raises it): the test must not hardcode it.
+        var informationalVersion = typeof(AppVersion).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+
+        Assert.StartsWith("v", AppVersion.Display);
+        Assert.Equal(AppVersion.Format(informationalVersion), AppVersion.Display);
     }
 }

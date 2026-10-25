@@ -1,4 +1,7 @@
 .adult-switch {
+    /* The page header is a grid: without this the switch would stretch over the whole line. */
+    justify-self: start;
+    width: fit-content;
     display: inline-flex;
     align-items: center;
     gap: .6rem;
