@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="WhatchaWatching">
+  <title>WhatchaWatching</title>
+  <!-- The dark surface of the site. -->
+  <rect width="64" height="64" rx="14" fill="#1a1a2e"/>
+  <!-- A die, slightly tilted: the random pick. -->
+  <g transform="rotate(-10 32 32)">
+    <rect x="11" y="11" width="42" height="42" rx="10" fill="#ff4d6d"/>
+    <g fill="#ffffff">
+      <circle cx="20.5" cy="20.5" r="3.6"/>
+      <circle cx="43.5" cy="20.5" r="3.6"/>
+      <circle cx="20.5" cy="43.5" r="3.6"/>
+      <circle cx="43.5" cy="43.5" r="3.6"/>
+    </g>
+    <!-- The middle pip is a play button, in the amber of the site: what you will watch. -->
+    <path d="M27.5 25.5v13a1.6 1.6 0 0 0 2.4 1.4l11.2-6.5a1.6 1.6 0 0 0 0-2.8L29.9 24.1a1.6 1.6 0 0 0-2.4 1.4z" fill="#ffb800"/>
+  </g>
+</svg>
