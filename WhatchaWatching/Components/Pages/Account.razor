@@ -64,10 +64,15 @@
     protected override async Task OnInitializedAsync()
     {
         // After a post the form has already filled Input: the stored value must not replace what was just sent.
-        if (Input is null)
+        var posted = Input is not null;
+
+        // The model exists before the first await: Blazor renders the page as soon as the component waits, and the form
+        // cannot be rendered without its model.
+        Input ??= new ContentSettings();
+
+        if (!posted && await CurrentUser.GetUserIdAsync() is { } userId)
         {
-            var userId = await CurrentUser.GetUserIdAsync();
-            Input = new ContentSettings { ShowAdultContent = userId is { } id && await Settings.ShowsAdultContentAsync(id) };
+            Input.ShowAdultContent = await Settings.ShowsAdultContentAsync(userId);
         }
     }
 
