@@ -20,24 +20,26 @@
         <AdultSwitch Visible="profileAllowsAdult" Value="AdultState.Enabled" ValueChanged="OnAdultChanged" />
     </header>
 
+    <MediaTypeTabs Selected="Type" />
+
     @if (loading)
     {
-        <div class="anime-grid" aria-busy="true">
+        <div class="media-grid" aria-busy="true">
             @for (var i = 0; i < 6; i++)
             {
-                <AnimeCardSkeleton />
+                <MediaCardSkeleton />
             }
         </div>
     }
     else if (failed)
     {
-        <EmptyState Title="The search is not available" Message="The anime service did not answer. Try again in a moment.">
+        <EmptyState Title="The search is not available" Message="@($"The {(Type == MediaType.Anime ? "anime" : "movie and series")} service did not answer. Try again in a moment.")">
             <button type="button" class="btn" @onclick="LoadAsync">Try again</button>
         </EmptyState>
     }
     else if (string.IsNullOrWhiteSpace(Query))
     {
-        <EmptyState Title="Search for an anime" Message="Type a title in the search bar at the top of the page." />
+        <EmptyState Title="@($"Search for {Article} {MediaRoutes.Singular(Type)}")" Message="Type a title in the search bar at the top of the page." />
     }
     else if (result.Items.Count == 0)
     {
@@ -48,14 +50,14 @@
         @if (localOnly)
         {
             <p class="notice fade-in" role="status">
-                The anime services are not answering. These are only the anime already saved on this site: the list may be incomplete.
+                The @(Type == MediaType.Anime ? "anime" : "movie and series") service is not answering. These are only the titles already saved on this site: the list may be incomplete.
             </p>
         }
 
-        <div class="anime-grid">
+        <div class="media-grid">
             @foreach (var anime in result.Items)
             {
-                <AnimeCard Anime="anime" @key="anime.Id">
+                <MediaCard Media="anime" @key="anime.Id">
                     @if (userId is null)
                     {
                         <a class="btn btn-sm" href="@Navigation.GetLoginUrl()">Log in to add</a>
@@ -90,7 +92,7 @@
                             }
                         </button>
                     }
-                </AnimeCard>
+                </MediaCard>
             }
         </div>
 
@@ -102,7 +104,7 @@
         <Pagination Page="result.Page" TotalPages="result.TotalPages" PageChanged="GoToPage" />
     }
 
-    @if (!loading && !string.IsNullOrWhiteSpace(Query))
+    @if (!loading && !string.IsNullOrWhiteSpace(Query) && Type == MediaType.Anime)
     {
         <p class="manual-link muted">Still not there? <a href="anime/new">Add it by hand</a>.</p>
     }
@@ -121,7 +123,7 @@
     private PagedResultDto<MediaSummaryDto> result = NoResult;
     private HashSet<int> listed = [];
 
-    // Anime being added to or removed from the list: their button shows a spinner and cannot be clicked again.
+    // Titles being added to or removed from the list: their button shows a spinner and cannot be clicked again.
     private readonly HashSet<int> pending = [];
 
     [SupplyParameterFromQuery(Name = "q")]
@@ -129,6 +131,14 @@
 
     [SupplyParameterFromQuery(Name = "page")]
     private int? PageNumber { get; set; }
+
+    [SupplyParameterFromQuery(Name = "type")]
+    private string? TypeSlug { get; set; }
+
+    // Anime unless the address asks for movies or series.
+    private MediaType Type => MediaRoutes.FromSlug(TypeSlug) ?? MediaType.Anime;
+
+    private string Article => Type == MediaType.Anime ? "an" : "a";
 
     protected override async Task OnParametersSetAsync()
     {
@@ -153,12 +163,12 @@
             var includeAdult = profileAllowsAdult && AdultState.Enabled;
             var search = string.IsNullOrWhiteSpace(Query)
                 ? new MediaSearchResultDto(NoResult, IsLocalOnly: false)
-                : await MediaService.SearchAsync(MediaType.Anime, Query.Trim(), PageNumber ?? 1, includeAdult);
+                : await MediaService.SearchAsync(Type, Query.Trim(), PageNumber ?? 1, includeAdult);
             result = search.Results;
             localOnly = search.IsLocalOnly;
 
             listed = userId is { } id
-                ? (await WatchList.GetListedIdsAsync(id, MediaType.Anime, result.Items.Select(a => a.Id).ToList())).ToHashSet()
+                ? (await WatchList.GetListedIdsAsync(id, Type, result.Items.Select(a => a.Id).ToList())).ToHashSet()
                 : [];
         }
         catch (MediaProviderUnavailableException)
@@ -189,10 +199,10 @@
         {
             if (listed.Contains(externalId))
             {
-                await WatchList.RemoveAsync(id, MediaType.Anime, externalId);
+                await WatchList.RemoveAsync(id, Type, externalId);
                 listed.Remove(externalId);
             }
-            else if (await WatchList.AddAsync(id, MediaType.Anime, externalId) == WatchListAddResult.NotFound)
+            else if (await WatchList.AddAsync(id, Type, externalId) == WatchListAddResult.NotFound)
             {
                 actionFailed = true;
             }
@@ -203,7 +213,7 @@
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            Logger.LogError(ex, "Anime {ExternalId} could not be added or removed.", externalId);
+            Logger.LogError(ex, "{Type} {ExternalId} could not be added or removed.", Type, externalId);
             actionFailed = true;
         }
         finally

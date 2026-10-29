@@ -1,13 +1,15 @@
 @page "/anime/{Id:int}"
+@page "/movie/{Id:int}"
+@page "/tv/{Id:int}"
 @inject IMediaService MediaService
 @inject ICustomAnimeService CustomAnimes
 @inject IWatchListService WatchList
 @inject ICurrentUser CurrentUser
 @inject IUserSettingsService Settings
 @inject NavigationManager Navigation
-@inject ILogger<AnimeDetail> Logger
+@inject ILogger<MediaDetail> Logger
 
-<PageTitle>@(anime?.Title ?? "Anime") - WhatchaWatching</PageTitle>
+<PageTitle>@(media?.Title ?? MediaRoutes.Badge(Type)) - WhatchaWatching</PageTitle>
 
 <section class="page-section">
     @if (loading)
@@ -27,60 +29,63 @@
     }
     else if (failed)
     {
-        <EmptyState Title="This anime could not be loaded" Message="The anime service did not answer. Try again in a moment.">
+        <EmptyState Title="@($"This {MediaRoutes.Singular(Type)} could not be loaded")" Message="The service did not answer. Try again in a moment.">
             <button type="button" class="btn" @onclick="LoadAsync">Try again</button>
         </EmptyState>
     }
-    else if (anime is null)
+    else if (media is null)
     {
-        <EmptyState Title="Anime not found" Message="This anime does not exist or is not available.">
-            <a class="btn" href="search">Back to search</a>
+        <EmptyState Title="@($"{MediaRoutes.Badge(Type)} not found")" Message="This title does not exist or is not available.">
+            <a class="btn" href="@MediaRoutes.SearchUrl(Type)">Back to search</a>
         </EmptyState>
     }
     else
     {
         <article class="detail fade-in">
             <div class="poster">
-                @if (anime.ImageUrl is not null)
+                @if (media.ImageUrl is not null)
                 {
-                    <img src="@anime.ImageUrl" alt="@anime.Title" />
+                    <img src="@media.ImageUrl" alt="@media.Title" />
                 }
             </div>
 
             <div class="content">
-                <h1>@anime.Title</h1>
+                <h1>@media.Title</h1>
 
                 <p class="meta">
-                    @if (anime.Year is { } year)
+                    @if (media.Year is { } year)
                     {
                         <span>@year</span>
                     }
-                    <span>@AnimeDisplay.Episodes(anime)</span>
-                    <span>@AnimeDisplay.Duration(anime)</span>
-                    @if (anime.Status is not null)
+                    @if (MediaDisplay.Episodes(media) is { } episodes)
                     {
-                        <span>@anime.Status</span>
+                        <span>@episodes</span>
                     }
-                    @if (anime.Score is { } score)
+                    <span>@MediaDisplay.Duration(media)</span>
+                    @if (MediaDisplay.Status(media) is { } status)
                     {
-                        <span class="score" title="MyAnimeList score">&#9733; @score.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)</span>
+                        <span>@status</span>
+                    }
+                    @if (media.Score is { } score)
+                    {
+                        <span class="score" title="@MediaDisplay.ScoreSource(media)">&#9733; @score.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)</span>
                     }
                 </p>
 
                 <div class="chip-list">
-                    @if (anime.IsAdult)
+                    @if (media.IsAdult)
                     {
                         <span class="chip chip-adult">18+</span>
                     }
-                    @foreach (var genre in anime.Genres)
+                    @foreach (var genre in media.Genres)
                     {
                         <span class="chip">@genre</span>
                     }
                 </div>
 
-                <p class="synopsis">@(anime.Synopsis ?? "No summary available.")</p>
+                <p class="synopsis">@(media.Synopsis ?? "No summary available.")</p>
 
-                @if (anime.IsCustom)
+                @if (media.IsCustom)
                 {
                     <p class="notice">You added this anime by hand. Only you can see it.</p>
                 }
@@ -89,21 +94,27 @@
                     <section class="watch" aria-labelledby="watch-title">
                         <h2 id="watch-title">Where to watch</h2>
 
-                        @if (anime.StreamingLinks.Count > 0)
+                        @if (media.StreamingLinks.Count > 0)
                         {
                             <ul class="watch-links">
-                                @foreach (var link in anime.StreamingLinks)
+                                @foreach (var link in media.StreamingLinks)
                                 {
                                     <li>
                                         <a class="btn btn-ghost btn-sm" href="@link.Url" target="_blank" rel="noopener noreferrer">@link.Site</a>
                                     </li>
                                 }
                             </ul>
-                            <p class="muted small">Availability depends on your country.</p>
+                            <p class="muted small">
+                                Availability depends on your country.
+                                @if (media.Type != MediaType.Anime)
+                                {
+                                    <span>Streaming data by <a href="https://www.justwatch.com/" target="_blank" rel="noopener noreferrer">JustWatch</a>, through TMDB.</span>
+                                }
+                            </p>
                         }
                         else
                         {
-                            <p class="muted">No streaming platform is known for this anime.</p>
+                            <p class="muted">No streaming platform is known for this media.</p>
                         }
                     </section>
                 }
@@ -113,7 +124,7 @@
                     {
                         <a class="btn" href="@Navigation.GetLoginUrl()">Log in to add to my list</a>
                     }
-                    else if (anime.IsCustom)
+                    else if (media.IsCustom)
                     {
                         // Removing an anime added by hand deletes it, so it asks first.
                         @if (confirmingDelete)
@@ -176,7 +187,7 @@
 </section>
 
 @code {
-    private MediaSummaryDto? anime;
+    private MediaSummaryDto? media;
     private int? userId;
     private bool listed;
     private bool failed;
@@ -189,8 +200,12 @@
     [Parameter]
     public int Id { get; set; }
 
+    // /anime/5, /movie/5 and /tv/5 are the same page: the first word of the address says which one.
+    private MediaType Type { get; set; } = MediaType.Anime;
+
     protected override async Task OnParametersSetAsync()
     {
+        Type = MediaRoutes.FromSlug(Navigation.ToBaseRelativePath(Navigation.Uri).Split('/', '?', '#')[0]) ?? MediaType.Anime;
         loading = true;
         if (RendererInfo.IsInteractive)
         {
@@ -212,14 +227,14 @@
             if (Id <= 0)
             {
                 // An anime added by hand: private, so only its owner can open it.
-                anime = userId is { } owner ? await CustomAnimes.GetAsync(owner, Id) : null;
-                listed = anime is not null;
+                media = Type == MediaType.Anime && userId is { } owner ? await CustomAnimes.GetAsync(owner, Id) : null;
+                listed = media is not null;
             }
             else
             {
-                anime = await MediaService.GetAsync(MediaType.Anime, Id, includeAdult);
-                listed = anime is not null && userId is { } id
-                    && (await WatchList.GetListedIdsAsync(id, MediaType.Anime, [Id])).Contains(Id);
+                media = await MediaService.GetAsync(Type, Id, includeAdult);
+                listed = media is not null && userId is { } id
+                    && (await WatchList.GetListedIdsAsync(id, Type, [Id])).Contains(Id);
             }
         }
         catch (MediaProviderUnavailableException)
@@ -228,7 +243,7 @@
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            Logger.LogError(ex, "Anime {Id} could not be loaded.", Id);
+            Logger.LogError(ex, "{Type} {Id} could not be loaded.", Type, Id);
             failed = true;
         }
         finally
@@ -249,19 +264,19 @@
         actionFailed = false;
         try
         {
-            if (anime?.IsCustom == true)
+            if (media?.IsCustom == true)
             {
-                await WatchList.RemoveAsync(id, MediaType.Anime, Id);
+                await WatchList.RemoveAsync(id, Type, Id);
                 Navigation.NavigateTo("my-list");
                 return;
             }
 
             if (listed)
             {
-                await WatchList.RemoveAsync(id, MediaType.Anime, Id);
+                await WatchList.RemoveAsync(id, Type, Id);
                 listed = false;
             }
-            else if (await WatchList.AddAsync(id, MediaType.Anime, Id) == WatchListAddResult.NotFound)
+            else if (await WatchList.AddAsync(id, Type, Id) == WatchListAddResult.NotFound)
             {
                 actionFailed = true;
             }
@@ -272,7 +287,7 @@
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            Logger.LogError(ex, "Anime {Id} could not be added or removed.", Id);
+            Logger.LogError(ex, "{Type} {Id} could not be added or removed.", Type, Id);
             actionFailed = true;
         }
         finally

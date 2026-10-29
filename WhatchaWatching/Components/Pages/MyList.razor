@@ -12,16 +12,21 @@
         @if (!loading && !failed)
         {
             <p class="muted fade-in">@items.Count @(IsFiltered ? "matching" : "to watch")</p>
-            <p class="fade-in"><a href="anime/new">Add an anime by hand</a></p>
+            @if (Type is null or MediaType.Anime)
+            {
+                <p class="fade-in"><a href="anime/new">Add an anime by hand</a></p>
+            }
         }
     </header>
 
+    <MediaTypeTabs Selected="Type" AllowAll="true" />
+
     @if (loading)
     {
-        <div class="anime-grid" aria-busy="true">
+        <div class="media-grid" aria-busy="true">
             @for (var i = 0; i < 4; i++)
             {
-                <AnimeCardSkeleton />
+                <MediaCardSkeleton />
             }
         </div>
     }
@@ -33,8 +38,8 @@
     }
     else if (items.Count == 0 && !IsFiltered)
     {
-        <EmptyState Title="Your list is empty" Message="Search for an anime and add it to your list.">
-            <a class="btn" href="search">Find something to add</a>
+        <EmptyState Title="@(Type is null ? "Your list is empty" : $"No {MediaRoutes.Label(Type.Value).ToLowerInvariant()} in your list")" Message="Search for something and add it to your list.">
+            <a class="btn" href="@(Type is { } chosen ? MediaRoutes.SearchUrl(chosen) : "search")">Find something to add</a>
         </EmptyState>
     }
     else
@@ -51,14 +56,14 @@
         }
         else
         {
-            <div class="anime-grid @(busy ? "is-busy" : "")" aria-busy="@(busy ? "true" : "false")">
+            <div class="media-grid @(busy ? "is-busy" : "")" aria-busy="@(busy ? "true" : "false")">
                 @foreach (var anime in items)
                 {
-                    <AnimeCard Anime="anime" @key="anime.Id">
+                    <MediaCard Media="anime" ShowType="@(Type is null)" @key="(anime.Type, anime.Id)">
                         <button type="button" class="btn btn-danger btn-sm" title="@(anime.IsCustom ? "Remove and delete this anime" : "Remove from my list")"
-                                disabled="@removing.Contains(anime.Id)" aria-busy="@(removing.Contains(anime.Id) ? "true" : "false")"
-                                @onclick="() => RemoveAsync(anime.Id)">
-                            @if (removing.Contains(anime.Id))
+                                disabled="@removing.Contains(Key(anime))" aria-busy="@(removing.Contains(Key(anime)) ? "true" : "false")"
+                                @onclick="() => RemoveAsync(anime)">
+                            @if (removing.Contains(Key(anime)))
                             {
                                 <span class="spinner" aria-hidden="true"></span><span>Removing...</span>
                             }
@@ -67,7 +72,7 @@
                                 <Icon Name="trash" Size="16" /><span>Remove</span>
                             }
                         </button>
-                    </AnimeCard>
+                    </MediaCard>
                 }
             </div>
         }
@@ -79,8 +84,8 @@
     private bool loading = true;
     private bool busy;
 
-    // Anime being removed: their button shows a spinner and cannot be clicked again.
-    private readonly HashSet<int> removing = [];
+    // Titles being removed: their button shows a spinner and cannot be clicked again.
+    private readonly HashSet<MediaKey> removing = [];
     private bool failed;
     private int userId;
     private IReadOnlyList<MediaSummaryDto> items = [];
@@ -91,7 +96,13 @@
 
     private bool IsFiltered => genres.Count > 0 || duration.Count > 0;
 
-    protected override async Task OnInitializedAsync()
+    [SupplyParameterFromQuery(Name = "type")]
+    private string? TypeSlug { get; set; }
+
+    // All the types unless the address asks for one.
+    private MediaType? Type => MediaRoutes.FromSlug(TypeSlug);
+
+    protected override async Task OnParametersSetAsync()
     {
         if (RendererInfo.IsInteractive)
         {
@@ -107,10 +118,10 @@
         try
         {
             userId = await CurrentUser.GetUserIdAsync() ?? throw new InvalidOperationException("Not signed in.");
-            genreOptions = await WatchList.GetGenresAsync(userId, MediaType.Anime);
+            genreOptions = await WatchList.GetGenresAsync(userId, Type);
             // A filter on a genre that left the list would hide everything.
             genres = genres.Where(genreOptions.Contains).ToList();
-            items = await WatchList.GetAsync(userId, FilterOptions.ToFilter(genres, duration) with { Type = MediaType.Anime }, FilterOptions.ToSort(sort));
+            items = await WatchList.GetAsync(userId, FilterOptions.ToFilter(genres, duration) with { Type = Type }, FilterOptions.ToSort(sort));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -142,27 +153,30 @@
         await ReloadAsync();
     }
 
-    private async Task RemoveAsync(int externalId)
+    private static MediaKey Key(MediaSummaryDto media) => new(media.Type, media.Id);
+
+    private async Task RemoveAsync(MediaSummaryDto media)
     {
         // A second click while the first is still running would only repeat the request.
-        if (!removing.Add(externalId))
+        var key = Key(media);
+        if (!removing.Add(key))
         {
             return;
         }
 
         try
         {
-            await WatchList.RemoveAsync(userId, MediaType.Anime, externalId);
+            await WatchList.RemoveAsync(userId, media.Type, media.Id);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            Logger.LogError(ex, "Anime {ExternalId} could not be removed.", externalId);
+            Logger.LogError(ex, "{Type} {ExternalId} could not be removed.", media.Type, media.Id);
             failed = true;
             return;
         }
         finally
         {
-            removing.Remove(externalId);
+            removing.Remove(key);
         }
 
         await ReloadAsync();

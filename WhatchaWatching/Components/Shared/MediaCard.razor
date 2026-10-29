@@ -1,0 +1,69 @@
+@using WhatchaWatching.Common.Dtos
+
+<article class="media-card @(Featured ? "featured" : "")">
+    <div class="head">
+        <a class="poster" href="@MediaRoutes.DetailUrl(Media.Type, Media.Id)" aria-label="@Media.Title" tabindex="-1">
+            @if (Media.ImageUrl is not null)
+            {
+                <img src="@Media.ImageUrl" alt="" loading="lazy" />
+            }
+        </a>
+
+        <div class="info">
+            <h3><a href="@MediaRoutes.DetailUrl(Media.Type, Media.Id)">@Media.Title</a></h3>
+            <p class="meta">@MediaDisplay.Duration(Media)</p>
+
+            @if (ShowType)
+            {
+                <span class="chip chip-type">@MediaRoutes.Badge(Media.Type)</span>
+            }
+
+            @if (Media.IsAdult)
+            {
+                <span class="chip chip-adult">18+</span>
+            }
+
+            @if (Media.IsCustom)
+            {
+                <span class="chip">Added by you</span>
+            }
+
+            @if (Featured && Media.Genres.Count > 0)
+            {
+                <div class="chip-list">
+                    @foreach (var genre in Media.Genres)
+                    {
+                        <span class="chip">@genre</span>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (Featured)
+    {
+        <p class="summary">@(Media.Synopsis ?? "No summary available.")</p>
+    }
+
+    @if (ChildContent is not null)
+    {
+        <div class="actions">@ChildContent</div>
+    }
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public MediaSummaryDto Media { get; set; } = default!;
+
+    /// <summary>Large horizontal layout used for the pick on the home page.</summary>
+    [Parameter]
+    public bool Featured { get; set; }
+
+    /// <summary>Shows a badge with the type, for lists that mix anime, movies and series.</summary>
+    [Parameter]
+    public bool ShowType { get; set; }
+
+    /// <summary>Buttons shown at the bottom of the card.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

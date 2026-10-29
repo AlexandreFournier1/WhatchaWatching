@@ -23,4 +23,4 @@
 
 .conditions .filters { justify-content: center; margin-bottom: 0; }
 
-.result ::deep .anime-card { width: 100%; text-align: left; }
+.result ::deep .media-card { width: 100%; text-align: left; }

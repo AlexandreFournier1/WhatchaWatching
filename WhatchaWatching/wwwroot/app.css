@@ -129,7 +129,7 @@ a:hover { color: var(--accent-hover); }
     padding: 1.25rem;
 }
 
-.anime-grid {
+.media-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 1.25rem;
@@ -282,3 +282,27 @@ a:hover { color: var(--accent-hover); }
 
 /* A button that is waiting for the server stays readable: the spinner must be seen. */
 .btn[aria-busy="true"]:disabled { opacity: .85; cursor: progress; }
+
+/* ---------- Tabs for the type of title (anime, movies, series) ---------- */
+.type-tabs {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: .25rem;
+    margin-bottom: 1.5rem;
+    padding: .25rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+}
+
+.type-tabs .tab {
+    padding: .35rem 1rem;
+    border-radius: 999px;
+    color: var(--text-2);
+    font-size: .95rem;
+    transition: background .15s, color .15s;
+}
+.type-tabs .tab:hover { background: var(--surface-hover); color: var(--text); }
+.type-tabs .tab.active { background: var(--accent); color: var(--text); }
+
+.chip-type { border-color: var(--accent-2); color: var(--accent-2); }

@@ -12,6 +12,8 @@
 <section class="home">
     <h1>Whatcha watching today ?</h1>
 
+    <MediaTypeTabs Selected="Type" AllowAll="true" />
+
     <div class="actions">
         <button type="button" class="btn" disabled="@loading" @onclick="Surprise">Surprise Me</button>
         <button type="button" class="btn" aria-expanded="@(showConditions ? "true" : "false")"
@@ -41,11 +43,11 @@
             {
                 case State.Loading:
                     <h2 class="muted fade-in">Looking for something...</h2>
-                    <AnimeCardSkeleton Featured="true" />
+                    <MediaCardSkeleton Featured="true" />
                     break;
 
                 case State.NeedsLogin:
-                    <EmptyState Title="Log in to use your list" Message="The picker chooses among the anime of your list.">
+                    <EmptyState Title="Log in to use your list" Message="The picker chooses among the titles of your list.">
                         <a class="btn" href="@Navigation.GetLoginUrl()">Log in</a>
                     </EmptyState>
                     break;
@@ -58,18 +60,18 @@
 
                 case State.Nothing:
                     <EmptyState Title="Nothing to pick from"
-                                Message="Your list has no anime matching this. Add some, or change the conditions.">
-                        <a class="btn" href="search">Find something to add</a>
+                                Message="Your list has nothing matching this. Add some titles, or change the conditions.">
+                        <a class="btn" href="@(Type is { } chosen ? MediaRoutes.SearchUrl(chosen) : "search")">Find something to add</a>
                     </EmptyState>
                     break;
 
                 case State.Picked when pick is not null:
                     <h2 class="fade-in">Today you will be watching this :</h2>
 
-                    <AnimeCard Anime="pick" Featured="true">
-                        <a class="btn btn-ghost" href="anime/@pick.Id">View details</a>
+                    <MediaCard Media="pick" Featured="true" ShowType="@(Type is null)">
+                        <a class="btn btn-ghost" href="@MediaRoutes.DetailUrl(pick.Type, pick.Id)">View details</a>
                         <button type="button" class="btn btn-ghost" @onclick="Pick">Pick another</button>
-                    </AnimeCard>
+                    </MediaCard>
                     break;
             }
         </div>
@@ -87,6 +89,32 @@
     private IReadOnlyList<string> genreOptions = [];
     private IReadOnlyCollection<string> genres = [];
     private IReadOnlyCollection<string> duration = [];
+
+    [SupplyParameterFromQuery(Name = "type")]
+    private string? TypeSlug { get; set; }
+
+    // Picks among all the types unless the address asks for one.
+    private MediaType? Type => MediaRoutes.FromSlug(TypeSlug);
+
+    private MediaType? shownType;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Another type is another list: the previous pick and the genres chosen for it no longer apply.
+        if (shownType != Type)
+        {
+            shownType = Type;
+            state = State.Idle;
+            pick = null;
+            genres = [];
+            genreOptions = [];
+
+            if (showConditions)
+            {
+                await LoadGenresAsync();
+            }
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -135,7 +163,7 @@
         {
             if (await CurrentUser.GetUserIdAsync() is { } userId)
             {
-                genreOptions = await WatchList.GetGenresAsync(userId, MediaType.Anime);
+                genreOptions = await WatchList.GetGenresAsync(userId, Type);
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -162,8 +190,8 @@
         state = State.Loading;
         try
         {
-            // The switch can only hide adult anime: the service shows them only if the profile allows it too.
-            var filter = FilterOptions.ToFilter(genres, duration) with { Type = MediaType.Anime, IncludeAdult = AdultState.Enabled };
+            // The switch can only hide adult titles: the service shows them only if the profile allows it too.
+            var filter = FilterOptions.ToFilter(genres, duration) with { Type = Type, IncludeAdult = AdultState.Enabled };
             pick = await Picker.PickAsync(userId.Value, filter, pick is null ? null : new MediaKey(pick.Type, pick.Id));
             state = pick is null ? State.Nothing : State.Picked;
         }

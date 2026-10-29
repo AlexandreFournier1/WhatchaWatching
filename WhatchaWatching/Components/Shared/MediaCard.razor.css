@@ -1,4 +1,4 @@
-.anime-card {
+.media-card {
     display: flex;
     flex-direction: column;
     gap: .75rem;
@@ -47,14 +47,14 @@ h3 a:hover { color: var(--accent); }
     .featured .poster { flex-basis: auto; width: 100%; max-width: 220px; }
 }
 
-.anime-card:hover {
+.media-card:hover {
     border-color: var(--text-2);
     transform: translateY(-3px);
     box-shadow: 0 10px 24px rgba(0, 0, 0, .35);
 }
 
 .poster { transition: opacity .2s; }
-.anime-card:hover .poster { opacity: .92; }
+.media-card:hover .poster { opacity: .92; }
 h3 a { transition: color .15s; }
 
 .featured:hover { transform: none; box-shadow: none; border-color: var(--border); }

@@ -34,3 +34,12 @@
 @media (max-width: 560px) {
     .data { text-align: left; }
 }
+
+.small-print { font-size: .8rem; opacity: .75; }
+
+.tmdb-logo { justify-self: end; line-height: 0; }
+.tmdb-logo img { height: 28px; width: auto; display: block; }
+
+@media (max-width: 560px) {
+    .tmdb-logo { justify-self: start; }
+}

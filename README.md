@@ -4,13 +4,14 @@ WhatchaWatching is a Blazor Web App (.NET 10) to keep a list of the anime you wa
 
 **Live site:** [https://whatcha-watching.alwaysdata.net](https://whatcha-watching.alwaysdata.net)
 
-> The project is under construction. Movies and TV series (TMDB) and email confirmation are not done yet.
+> The project is under construction. Email confirmation is not done yet.
 
 ## Features
 
-- **Search** anime by title (Jikan, then AniList if Jikan is down, then the anime already saved on the site if both are down, with a notice).
-- **Anime page**: poster, summary, genres, episodes, duration, status, score, and **where to watch it** (streaming platforms, from Jikan and AniList).
-- **Watchlist ("My List")**: add and remove anime, filter by genre and episode duration, sort by date, title or duration. The list only holds what you still want to watch: no status, rating or notes.
+- **Anime, movies and TV series**: tabs (Anime / Movies / TV series) pick the type on the search, the list and the random pick (`?type=anime|movie|tv`); the list and the pick also offer "All".
+- **Search** by title: anime from Jikan, then AniList if Jikan is down; movies and series from [TMDB](https://www.themoviedb.org/). When the providers are down, the titles already saved on the site are searched, with a notice.
+- **Title page** (`/anime/{id}`, `/movie/{id}`, `/tv/{id}`): poster, summary, genres, episodes and seasons, duration, status, score, and **where to watch it** (streaming platforms: Jikan and AniList for anime, TMDB and JustWatch for the others, for the country in `Tmdb:WatchRegion`).
+- **Watchlist ("My List")**: add and remove titles, filter by genre and episode duration, sort by date, title or duration. The list only holds what you still want to watch: no status, rating or notes.
 - **Random pick**: "Surprise Me" picks from the whole list, "Find me something like..." narrows it down by genre and duration first. It avoids repeating the previous pick.
 - **Add an anime by hand** (`/anime/new`) when the providers do not have it. It is private to you, limited to 200 per user, and removing it from your list deletes it.
 - **Accounts** (ASP.NET Core Identity, cookies): sign up, log in, log out. Searching is open to everyone; the list, the picker and the account page need an account.
@@ -21,7 +22,7 @@ WhatchaWatching is a Blazor Web App (.NET 10) to keep a list of the anime you wa
 
 - Blazor Web App (.NET 10, Interactive Server render mode; login, register and account pages are rendered by the server because they use the auth cookie)
 - Entity Framework Core with MySQL (Pomelo provider)
-- Jikan API and AniList API (GraphQL) for anime data, with retries, short timeouts and an automatic fallback; TMDB API planned for movies and TV series
+- Jikan API and AniList API (GraphQL) for anime data, with retries, short timeouts and an automatic fallback; TMDB API for movies and TV series
 - .NET Aspire for local orchestration
 - xUnit for tests
 - Hosting and production database: AlwaysData
