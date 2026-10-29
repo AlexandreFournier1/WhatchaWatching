@@ -15,6 +15,9 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.MySql" Version="13.6.0" />
+    <!-- Transitive versions with known vulnerabilities (GHSA-473q-m89c-ghf8, GHSA-qhrr-8q5h-9q3h): patched ones are pinned. -->
+    <PackageReference Include="MessagePack" Version="2.5.303" />
+    <PackageReference Include="MySqlConnector" Version="2.6.2" />
   </ItemGroup>
 
 </Project>

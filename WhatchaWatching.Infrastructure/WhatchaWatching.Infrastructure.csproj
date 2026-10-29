@@ -18,6 +18,8 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.13" />
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.13" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.13" />
+    <!-- Pomelo asks for 2.4.0, which has a known vulnerability (GHSA-473q-m89c-ghf8): a newer patch is pinned here. -->
+    <PackageReference Include="MySqlConnector" Version="2.6.2" />
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
   </ItemGroup>
 
