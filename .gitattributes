@@ -1,0 +1,12 @@
+# The repository keeps LF; Git converts to the line endings of the machine on checkout.
+* text=auto
+
+# Run by sh (also on Windows through Git Bash): CRLF would break them.
+*.sh text eol=lf
+.githooks/* text eol=lf
+.claude/hooks/* text eol=lf
+
+*.png binary
+*.ico binary
+*.jpg binary
+*.webp binary
