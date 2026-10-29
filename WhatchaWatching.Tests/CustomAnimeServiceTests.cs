@@ -20,13 +20,13 @@ public class CustomAnimeServiceTests
     private readonly FakeAnimeProvider _provider = new();
     private readonly TestDbContextFactory _db = new();
     private readonly CustomAnimeService _custom;
-    private readonly AnimeService _anime;
+    private readonly MediaService _anime;
     private readonly WatchListService _watchList;
 
     public CustomAnimeServiceTests()
     {
         _custom = new CustomAnimeService(_db);
-        _anime = new AnimeService(_provider, _db, TimeProvider.System, NullLogger<AnimeService>.Instance);
+        _anime = new MediaService(_provider, _db, TimeProvider.System, NullLogger<MediaService>.Instance);
         _watchList = new WatchListService(_db, _anime);
     }
 
@@ -87,7 +87,7 @@ public class CustomAnimeServiceTests
     public async Task Create_LinksTheGenresAndReusesTheOnesAlreadyStored()
     {
         _provider.With(FakeAnimeProvider.Anime(7, "From a provider", 24, "Comedy"));
-        await _anime.GetAsync(7);
+        await _anime.GetAsync(MediaType.Anime, 7);
 
         var created = await _custom.CreateAsync(User, new CustomAnimeDto { Title = "Mine", Genres = ["comedy", "Drama", "Drama"] });
 
@@ -181,7 +181,7 @@ public class CustomAnimeServiceTests
     {
         var created = await _custom.CreateAsync(User, Input());
 
-        Assert.Null(await _anime.GetAsync(created.Id));
+        Assert.Null(await _anime.GetAsync(MediaType.Anime, created.Id));
         Assert.Equal(0, _provider.GetAnimeCalls);
     }
 
@@ -190,8 +190,8 @@ public class CustomAnimeServiceTests
     {
         _provider.Failure = new ExternalApiException("down");
 
-        Assert.Null(await _anime.GetAsync(-5));
-        Assert.Null(await _anime.GetAsync(0));
+        Assert.Null(await _anime.GetAsync(MediaType.Anime, -5));
+        Assert.Null(await _anime.GetAsync(MediaType.Anime, 0));
         Assert.Equal(0, _provider.GetAnimeCalls);
     }
 
@@ -201,7 +201,7 @@ public class CustomAnimeServiceTests
         await _custom.CreateAsync(OtherUser, Input("Secret fan edit"));
         _provider.Failure = new ExternalApiException("down");
 
-        await Assert.ThrowsAsync<AnimeProviderUnavailableException>(() => _anime.SearchAsync("Secret", 1));
+        await Assert.ThrowsAsync<MediaProviderUnavailableException>(() => _anime.SearchAsync(MediaType.Anime, "Secret", 1));
     }
 
     [Fact]
@@ -209,7 +209,7 @@ public class CustomAnimeServiceTests
     {
         var created = await _custom.CreateAsync(OtherUser, Input());
 
-        Assert.Equal(WatchListAddResult.AnimeNotFound, await _watchList.AddAsync(User, created.Id));
+        Assert.Equal(WatchListAddResult.NotFound, await _watchList.AddAsync(User, MediaType.Anime, created.Id));
     }
 
     [Fact]
@@ -225,7 +225,7 @@ public class CustomAnimeServiceTests
     {
         var created = await _custom.CreateAsync(User, new CustomAnimeDto { Title = "Short lived", Genres = ["Action"] });
 
-        Assert.True(await _watchList.RemoveAsync(User, created.Id));
+        Assert.True(await _watchList.RemoveAsync(User, MediaType.Anime, created.Id));
 
         await using var context = _db.CreateDbContext();
         Assert.Equal(0, await context.Media.CountAsync());
@@ -238,10 +238,10 @@ public class CustomAnimeServiceTests
     public async Task Remove_KeepsASharedAnimeForTheOtherUsers()
     {
         _provider.With(FakeAnimeProvider.Anime(1, "Shared"));
-        await _watchList.AddAsync(User, 1);
-        await _watchList.AddAsync(OtherUser, 1);
+        await _watchList.AddAsync(User, MediaType.Anime, 1);
+        await _watchList.AddAsync(OtherUser, MediaType.Anime, 1);
 
-        await _watchList.RemoveAsync(User, 1);
+        await _watchList.RemoveAsync(User, MediaType.Anime, 1);
 
         await using var context = _db.CreateDbContext();
         Assert.Equal(1, await context.Media.CountAsync());

@@ -83,7 +83,7 @@
     private readonly HashSet<int> removing = [];
     private bool failed;
     private int userId;
-    private IReadOnlyList<AnimeSummaryDto> items = [];
+    private IReadOnlyList<MediaSummaryDto> items = [];
     private IReadOnlyList<string> genreOptions = [];
     private IReadOnlyCollection<string> genres = [];
     private IReadOnlyCollection<string> duration = [];
@@ -107,10 +107,10 @@
         try
         {
             userId = await CurrentUser.GetUserIdAsync() ?? throw new InvalidOperationException("Not signed in.");
-            genreOptions = await WatchList.GetGenresAsync(userId);
+            genreOptions = await WatchList.GetGenresAsync(userId, MediaType.Anime);
             // A filter on a genre that left the list would hide everything.
             genres = genres.Where(genreOptions.Contains).ToList();
-            items = await WatchList.GetAsync(userId, FilterOptions.ToFilter(genres, duration), FilterOptions.ToSort(sort));
+            items = await WatchList.GetAsync(userId, FilterOptions.ToFilter(genres, duration) with { Type = MediaType.Anime }, FilterOptions.ToSort(sort));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -152,7 +152,7 @@
 
         try
         {
-            await WatchList.RemoveAsync(userId, externalId);
+            await WatchList.RemoveAsync(userId, MediaType.Anime, externalId);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

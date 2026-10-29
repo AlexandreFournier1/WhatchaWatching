@@ -21,15 +21,17 @@ internal static class TmdbMapper
             NullIfBlank(title.Overview),
             string.IsNullOrWhiteSpace(title.PosterPath) ? null : ExternalApiConstants.TMDB_IMAGE_BASE_URL + title.PosterPath,
             isMovie ? null : title.NumberOfEpisodes,
-            isMovie ? null : title.NumberOfSeasons,
             isMovie ? Positive(title.Runtime) : TvEpisodeDurationMinutes(title),
             ParseStatus(type, title.Status),
             // TMDB gives 0 to a title nobody has rated yet.
             title.VoteAverage > 0 ? Math.Round(title.VoteAverage.Value, 1) : null,
             releaseDate?.Year,
+            null,
+            null,
             releaseDate,
             ToGenres(title, type))
         {
+            SeasonCount = isMovie ? null : title.NumberOfSeasons,
             StreamingLinks = ToStreamingLinks(title.WatchProviders, watchRegion),
             IsAdult = title.Adult == true
         };

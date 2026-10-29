@@ -12,8 +12,8 @@ public interface ICustomAnimeService
     /// <exception cref="System.ComponentModel.DataAnnotations.ValidationException">
     /// A value is invalid, a genre is unknown, or the user reached the limit of anime added by hand.
     /// </exception>
-    Task<AnimeSummaryDto> CreateAsync(int userId, CustomAnimeDto input, CancellationToken cancellationToken = default);
+    Task<MediaSummaryDto> CreateAsync(int userId, CustomAnimeDto input, CancellationToken cancellationToken = default);
 
     /// <summary>Returns the user's own anime with this id, or null (another user's anime is never returned).</summary>
-    Task<AnimeSummaryDto?> GetAsync(int userId, int externalId, CancellationToken cancellationToken = default);
+    Task<MediaSummaryDto?> GetAsync(int userId, int externalId, CancellationToken cancellationToken = default);
 }

@@ -20,16 +20,16 @@ public class WatchListServiceTests
 
     public WatchListServiceTests()
     {
-        var animeService = new AnimeService(_provider, _db, TimeProvider.System, NullLogger<AnimeService>.Instance);
+        var animeService = new MediaService(_provider, _db, TimeProvider.System, NullLogger<MediaService>.Instance);
         _service = new WatchListService(_db, animeService);
     }
 
-    private async Task AddAsync(int userId, params ExternalAnimeDto[] animes)
+    private async Task AddAsync(int userId, params ExternalMediaDto[] animes)
     {
         _provider.With(animes);
         foreach (var anime in animes)
         {
-            Assert.Equal(WatchListAddResult.Added, await _service.AddAsync(userId, anime.ExternalId));
+            Assert.Equal(WatchListAddResult.Added, await _service.AddAsync(userId, MediaType.Anime, anime.ExternalId));
         }
     }
 
@@ -42,7 +42,7 @@ public class WatchListServiceTests
     {
         _provider.With(FakeAnimeProvider.Anime(1, "First"));
 
-        var result = await _service.AddAsync(User, 1);
+        var result = await _service.AddAsync(User, MediaType.Anime, 1);
 
         Assert.Equal(WatchListAddResult.Added, result);
         var anime = Assert.Single(await _service.GetAsync(User));
@@ -53,9 +53,9 @@ public class WatchListServiceTests
     public async Task Add_TheSameAnimeTwice_KeepsOneItem()
     {
         _provider.With(FakeAnimeProvider.Anime(1));
-        await _service.AddAsync(User, 1);
+        await _service.AddAsync(User, MediaType.Anime, 1);
 
-        var result = await _service.AddAsync(User, 1);
+        var result = await _service.AddAsync(User, MediaType.Anime, 1);
 
         Assert.Equal(WatchListAddResult.AlreadyInList, result);
         Assert.Single(await _service.GetAsync(User));
@@ -64,7 +64,7 @@ public class WatchListServiceTests
     [Fact]
     public async Task Add_UnknownAnime_ReportsNotFound()
     {
-        Assert.Equal(WatchListAddResult.AnimeNotFound, await _service.AddAsync(User, 404));
+        Assert.Equal(WatchListAddResult.NotFound, await _service.AddAsync(User, MediaType.Anime, 404));
     }
 
     [Fact]
@@ -72,7 +72,7 @@ public class WatchListServiceTests
     {
         _provider.Failure = new ExternalApiException("down");
 
-        await Assert.ThrowsAsync<AnimeProviderUnavailableException>(() => _service.AddAsync(User, 1));
+        await Assert.ThrowsAsync<MediaProviderUnavailableException>(() => _service.AddAsync(User, MediaType.Anime, 1));
     }
 
     [Fact]
@@ -90,8 +90,8 @@ public class WatchListServiceTests
     {
         _provider.With(FakeAnimeProvider.Anime(1));
 
-        Assert.Equal(WatchListAddResult.Added, await _service.AddAsync(User, 1));
-        Assert.Equal(WatchListAddResult.Added, await _service.AddAsync(OtherUser, 1));
+        Assert.Equal(WatchListAddResult.Added, await _service.AddAsync(User, MediaType.Anime, 1));
+        Assert.Equal(WatchListAddResult.Added, await _service.AddAsync(OtherUser, MediaType.Anime, 1));
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public class WatchListServiceTests
     {
         await AddAsync(User, FakeAnimeProvider.Anime(1), FakeAnimeProvider.Anime(2));
 
-        Assert.True(await _service.RemoveAsync(User, 1));
+        Assert.True(await _service.RemoveAsync(User, MediaType.Anime, 1));
 
         Assert.Equal(new[] { 2 }, await ListedIdsAsync());
         await using var context = _db.CreateDbContext();
@@ -111,7 +111,7 @@ public class WatchListServiceTests
     {
         await AddAsync(OtherUser, FakeAnimeProvider.Anime(1));
 
-        Assert.False(await _service.RemoveAsync(User, 1));
+        Assert.False(await _service.RemoveAsync(User, MediaType.Anime, 1));
         Assert.Single(await _service.GetAsync(OtherUser));
     }
 
@@ -202,9 +202,9 @@ public class WatchListServiceTests
         await AddAsync(User, FakeAnimeProvider.Anime(1));
         await AddAsync(OtherUser, FakeAnimeProvider.Anime(2));
 
-        var listed = await _service.GetListedIdsAsync(User, [1, 2, 3]);
+        var listed = await _service.GetListedIdsAsync(User, MediaType.Anime, [1, 2, 3]);
 
         Assert.Equal([1], listed);
-        Assert.Empty(await _service.GetListedIdsAsync(User, []));
+        Assert.Empty(await _service.GetListedIdsAsync(User, MediaType.Anime, []));
     }
 }

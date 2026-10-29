@@ -36,7 +36,7 @@ internal static partial class AniListMapper
     private static partial Regex BlankLinesPattern();
 
     /// <summary>Returns null for an anime without a MyAnimeList id: the rest of the app cannot identify it.</summary>
-    public static ExternalAnimeDto? ToDto(AniListMedia media)
+    public static ExternalMediaDto? ToDto(AniListMedia media)
     {
         if (media.IdMal is not { } id)
         {
@@ -45,7 +45,8 @@ internal static partial class AniListMapper
 
         var releaseDate = ToDate(media.StartDate);
 
-        return new ExternalAnimeDto(
+        return new ExternalMediaDto(
+            MediaType.Anime,
             id,
             media.Title?.English ?? media.Title?.Romaji ?? media.Title?.Native ?? string.Empty,
             media.Title?.Native ?? media.Title?.Romaji,

@@ -18,13 +18,18 @@ internal static class WatchListQueryExtensions
             return items;
         }
 
+        if (filter.Type is { } type)
+        {
+            items = items.Where(i => i.Media.Type == type);
+        }
+
         if (filter.Genres.Count > 0)
         {
             var genres = filter.Genres.ToList();
             items = items.Where(i => i.Media.MediaGenres.Any(mg => genres.Contains(mg.Genre.Name)));
         }
 
-        // An anime without a known duration never matches a duration filter.
+        // A title without a known duration never matches a duration filter.
         return filter.Duration switch
         {
             DurationRange.Short => items.Where(i =>

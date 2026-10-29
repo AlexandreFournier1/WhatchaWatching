@@ -14,9 +14,9 @@ public class StubProvider : IAnimeProvider
 
     public Exception? Failure { get; set; }
 
-    public ExternalAnimeDto? Anime { get; set; }
+    public ExternalMediaDto? Anime { get; set; }
 
-    public Task<PagedResultDto<ExternalAnimeDto>> SearchAnimeAsync(string query, int page, bool includeAdult = false, CancellationToken cancellationToken = default)
+    public Task<PagedResultDto<ExternalMediaDto>> SearchAnimeAsync(string query, int page, bool includeAdult = false, CancellationToken cancellationToken = default)
     {
         Calls++;
         LastIncludeAdult = includeAdult;
@@ -25,11 +25,11 @@ public class StubProvider : IAnimeProvider
             throw Failure;
         }
 
-        IReadOnlyList<ExternalAnimeDto> items = Anime is null ? [] : [Anime];
-        return Task.FromResult(new PagedResultDto<ExternalAnimeDto>(items, page, 1, items.Count));
+        IReadOnlyList<ExternalMediaDto> items = Anime is null ? [] : [Anime];
+        return Task.FromResult(new PagedResultDto<ExternalMediaDto>(items, page, 1, items.Count));
     }
 
-    public Task<ExternalAnimeDto?> GetAnimeAsync(int externalId, CancellationToken cancellationToken = default)
+    public Task<ExternalMediaDto?> GetAnimeAsync(int externalId, CancellationToken cancellationToken = default)
     {
         Calls++;
         if (Failure is not null)

@@ -17,17 +17,17 @@ public class RandomPickerServiceTests
 
     public RandomPickerServiceTests()
     {
-        var animeService = new AnimeService(_provider, _db, TimeProvider.System, NullLogger<AnimeService>.Instance);
+        var animeService = new MediaService(_provider, _db, TimeProvider.System, NullLogger<MediaService>.Instance);
         _watchList = new WatchListService(_db, animeService);
         _picker = new RandomPickerService(_db, new Random(42));
     }
 
-    private async Task AddAsync(int userId, params ExternalAnimeDto[] animes)
+    private async Task AddAsync(int userId, params ExternalMediaDto[] animes)
     {
         _provider.With(animes);
         foreach (var anime in animes)
         {
-            await _watchList.AddAsync(userId, anime.ExternalId);
+            await _watchList.AddAsync(userId, MediaType.Anime, anime.ExternalId);
         }
     }
 
@@ -104,7 +104,7 @@ public class RandomPickerServiceTests
 
         for (var i = 0; i < 20; i++)
         {
-            Assert.Equal(2, (await _picker.PickAsync(User, excludeExternalId: 1))!.Id);
+            Assert.Equal(2, (await _picker.PickAsync(User, exclude: new MediaKey(MediaType.Anime, 1)))!.Id);
         }
     }
 
@@ -113,6 +113,6 @@ public class RandomPickerServiceTests
     {
         await AddAsync(User, FakeAnimeProvider.Anime(1));
 
-        Assert.Equal(1, (await _picker.PickAsync(User, excludeExternalId: 1))!.Id);
+        Assert.Equal(1, (await _picker.PickAsync(User, exclude: new MediaKey(MediaType.Anime, 1)))!.Id);
     }
 }

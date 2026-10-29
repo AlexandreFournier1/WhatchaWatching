@@ -11,12 +11,13 @@ internal static partial class JikanMapper
     [GeneratedRegex(@"^\s*(?:(?<hours>\d+)\s*hr)?\s*(?:(?<minutes>\d+)\s*min)?", RegexOptions.IgnoreCase)]
     private static partial Regex DurationPattern();
 
-    public static ExternalAnimeDto ToDto(JikanAnime anime)
+    public static ExternalMediaDto ToDto(JikanAnime anime)
     {
         var title = anime.TitleEnglish ?? anime.Title ?? anime.TitleJapanese ?? string.Empty;
         var releaseDate = anime.Aired?.From?.UtcDateTime;
 
-        return new ExternalAnimeDto(
+        return new ExternalMediaDto(
+            MediaType.Anime,
             anime.MalId,
             title,
             anime.TitleJapanese ?? anime.Title,

@@ -13,7 +13,7 @@ public class CustomAnimeService(IDbContextFactory<ApplicationDbContext> contextF
 {
     private const int MaxAttempts = 3;
 
-    public async Task<AnimeSummaryDto> CreateAsync(
+    public async Task<MediaSummaryDto> CreateAsync(
         int userId, CustomAnimeDto input, CancellationToken cancellationToken = default)
     {
         var genres = Validate(input);
@@ -55,7 +55,7 @@ public class CustomAnimeService(IDbContextFactory<ApplicationDbContext> contextF
             try
             {
                 await context.SaveChangesAsync(cancellationToken);
-                return AnimeMapper.ToSummary(media);
+                return MediaMapper.ToSummary(media);
             }
             catch (DbUpdateException) when (attempt < MaxAttempts)
             {
@@ -64,7 +64,7 @@ public class CustomAnimeService(IDbContextFactory<ApplicationDbContext> contextF
         }
     }
 
-    public async Task<AnimeSummaryDto?> GetAsync(int userId, int externalId, CancellationToken cancellationToken = default)
+    public async Task<MediaSummaryDto?> GetAsync(int userId, int externalId, CancellationToken cancellationToken = default)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -76,7 +76,7 @@ public class CustomAnimeService(IDbContextFactory<ApplicationDbContext> contextF
                 m => m.Type == MediaType.Anime && m.ExternalId == externalId && m.CreatedByUserId == userId,
                 cancellationToken);
 
-        return media is null ? null : AnimeMapper.ToSummary(media);
+        return media is null ? null : MediaMapper.ToSummary(media);
     }
 
     // The form validates too, but the service cannot rely on it: whatever calls it gets the same rules.

@@ -1,5 +1,5 @@
 @page "/anime/{Id:int}"
-@inject IAnimeService AnimeService
+@inject IMediaService MediaService
 @inject ICustomAnimeService CustomAnimes
 @inject IWatchListService WatchList
 @inject ICurrentUser CurrentUser
@@ -176,7 +176,7 @@
 </section>
 
 @code {
-    private AnimeSummaryDto? anime;
+    private MediaSummaryDto? anime;
     private int? userId;
     private bool listed;
     private bool failed;
@@ -217,12 +217,12 @@
             }
             else
             {
-                anime = await AnimeService.GetAsync(Id, includeAdult);
+                anime = await MediaService.GetAsync(MediaType.Anime, Id, includeAdult);
                 listed = anime is not null && userId is { } id
-                    && (await WatchList.GetListedIdsAsync(id, [Id])).Contains(Id);
+                    && (await WatchList.GetListedIdsAsync(id, MediaType.Anime, [Id])).Contains(Id);
             }
         }
-        catch (AnimeProviderUnavailableException)
+        catch (MediaProviderUnavailableException)
         {
             failed = true;
         }
@@ -251,17 +251,17 @@
         {
             if (anime?.IsCustom == true)
             {
-                await WatchList.RemoveAsync(id, Id);
+                await WatchList.RemoveAsync(id, MediaType.Anime, Id);
                 Navigation.NavigateTo("my-list");
                 return;
             }
 
             if (listed)
             {
-                await WatchList.RemoveAsync(id, Id);
+                await WatchList.RemoveAsync(id, MediaType.Anime, Id);
                 listed = false;
             }
-            else if (await WatchList.AddAsync(id, Id) == WatchListAddResult.AnimeNotFound)
+            else if (await WatchList.AddAsync(id, MediaType.Anime, Id) == WatchListAddResult.NotFound)
             {
                 actionFailed = true;
             }

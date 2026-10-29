@@ -10,9 +10,9 @@ namespace WhatchaWatching.Application.Services;
 
 public class WatchListService(
     IDbContextFactory<ApplicationDbContext> contextFactory,
-    IAnimeService animeService) : IWatchListService
+    IMediaService mediaService) : IWatchListService
 {
-    public async Task<IReadOnlyList<AnimeSummaryDto>> GetAsync(
+    public async Task<IReadOnlyList<MediaSummaryDto>> GetAsync(
         int userId,
         WatchListFilterDto? filter = null,
         WatchListSort sort = WatchListSort.RecentlyAdded,
@@ -34,19 +34,26 @@ public class WatchListService(
             .ThenInclude(mg => mg.Genre)
             .ToListAsync(cancellationToken);
 
-        return items.Select(i => AnimeMapper.ToSummary(i.Media)).ToList();
+        return items.Select(i => MediaMapper.ToSummary(i.Media)).ToList();
     }
 
-    public async Task<IReadOnlyList<string>> GetGenresAsync(int userId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<string>> GetGenresAsync(
+        int userId, MediaType? type = null, CancellationToken cancellationToken = default)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
         var showAdult = await UserSettingsService.ShowsAdultContentAsync(context, userId, cancellationToken);
 
-        return await context.WatchListItems
+        var items = context.WatchListItems
             .AsNoTracking()
             .ForUser(userId)
-            .ApplyAdultContent(showAdult)
+            .ApplyAdultContent(showAdult);
+        if (type is { } only)
+        {
+            items = items.Where(i => i.Media.Type == only);
+        }
+
+        return await items
             .SelectMany(i => i.Media.MediaGenres.Select(mg => mg.Genre.Name))
             .Distinct()
             .OrderBy(name => name)
@@ -54,7 +61,7 @@ public class WatchListService(
     }
 
     public async Task<IReadOnlySet<int>> GetListedIdsAsync(
-        int userId, IReadOnlyCollection<int> externalIds, CancellationToken cancellationToken = default)
+        int userId, MediaType type, IReadOnlyCollection<int> externalIds, CancellationToken cancellationToken = default)
     {
         if (externalIds.Count == 0)
         {
@@ -67,36 +74,37 @@ public class WatchListService(
         var listed = await context.WatchListItems
             .AsNoTracking()
             .ForUser(userId)
-            .Where(i => i.Media.Type == MediaType.Anime && ids.Contains(i.Media.ExternalId))
+            .Where(i => i.Media.Type == type && ids.Contains(i.Media.ExternalId))
             .Select(i => i.Media.ExternalId)
             .ToListAsync(cancellationToken);
 
         return listed.ToHashSet();
     }
 
-    public async Task<WatchListAddResult> AddAsync(int userId, int externalId, CancellationToken cancellationToken = default)
+    public async Task<WatchListAddResult> AddAsync(
+        int userId, MediaType type, int externalId, CancellationToken cancellationToken = default)
     {
-        if (await IsListedAsync(userId, externalId, cancellationToken))
+        if (await IsListedAsync(userId, type, externalId, cancellationToken))
         {
             return WatchListAddResult.AlreadyInList;
         }
 
-        // Makes sure the anime is stored locally before the list points to it.
+        // Makes sure the title is stored locally before the list points to it.
         bool showAdult;
         await using (var settingsContext = await contextFactory.CreateDbContextAsync(cancellationToken))
         {
             showAdult = await UserSettingsService.ShowsAdultContentAsync(settingsContext, userId, cancellationToken);
         }
 
-        if (await animeService.GetAsync(externalId, showAdult, cancellationToken) is null)
+        if (await mediaService.GetAsync(type, externalId, showAdult, cancellationToken) is null)
         {
-            return WatchListAddResult.AnimeNotFound;
+            return WatchListAddResult.NotFound;
         }
 
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
         var mediaId = await context.Media
-            .Where(m => m.Type == MediaType.Anime && m.ExternalId == externalId)
+            .Where(m => m.Type == type && m.ExternalId == externalId)
             .Select(m => m.Id)
             .SingleAsync(cancellationToken);
 
@@ -109,7 +117,7 @@ public class WatchListService(
         catch (DbUpdateException)
         {
             // The same request arrived twice (double click): the unique index kept one.
-            if (await IsListedAsync(userId, externalId, cancellationToken))
+            if (await IsListedAsync(userId, type, externalId, cancellationToken))
             {
                 return WatchListAddResult.AlreadyInList;
             }
@@ -120,13 +128,14 @@ public class WatchListService(
         return WatchListAddResult.Added;
     }
 
-    public async Task<bool> RemoveAsync(int userId, int externalId, CancellationToken cancellationToken = default)
+    public async Task<bool> RemoveAsync(
+        int userId, MediaType type, int externalId, CancellationToken cancellationToken = default)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
         var item = await context.WatchListItems
             .ForUser(userId)
-            .FirstOrDefaultAsync(i => i.Media.Type == MediaType.Anime && i.Media.ExternalId == externalId, cancellationToken);
+            .FirstOrDefaultAsync(i => i.Media.Type == type && i.Media.ExternalId == externalId, cancellationToken);
 
         if (item is null)
         {
@@ -151,13 +160,13 @@ public class WatchListService(
         return true;
     }
 
-    private async Task<bool> IsListedAsync(int userId, int externalId, CancellationToken cancellationToken)
+    private async Task<bool> IsListedAsync(int userId, MediaType type, int externalId, CancellationToken cancellationToken)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
         return await context.WatchListItems
             .AsNoTracking()
             .ForUser(userId)
-            .AnyAsync(i => i.Media.Type == MediaType.Anime && i.Media.ExternalId == externalId, cancellationToken);
+            .AnyAsync(i => i.Media.Type == type && i.Media.ExternalId == externalId, cancellationToken);
     }
 }

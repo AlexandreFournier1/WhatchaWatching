@@ -6,7 +6,7 @@ namespace WhatchaWatching.Tests.TestSupport;
 
 public sealed class FakeAnimeProvider : IAnimeProvider
 {
-    private readonly Dictionary<int, ExternalAnimeDto> _animes = [];
+    private readonly Dictionary<int, ExternalMediaDto> _animes = [];
 
     public int GetAnimeCalls { get; private set; }
 
@@ -16,11 +16,12 @@ public sealed class FakeAnimeProvider : IAnimeProvider
     /// <summary>When set, every call throws it (a Jikan outage).</summary>
     public ExternalApiException? Failure { get; set; }
 
-    public static ExternalAnimeDto Anime(
+    public static ExternalMediaDto Anime(
         int id,
         string? title = null,
         int? minutes = 24,
         params string[] genres) => new(
+            MediaType.Anime,
             id,
             title ?? $"Anime {id}",
             null,
@@ -46,7 +47,7 @@ public sealed class FakeAnimeProvider : IAnimeProvider
         ["Romance"] = 22
     };
 
-    public FakeAnimeProvider With(params ExternalAnimeDto[] animes)
+    public FakeAnimeProvider With(params ExternalMediaDto[] animes)
     {
         foreach (var anime in animes)
         {
@@ -56,7 +57,7 @@ public sealed class FakeAnimeProvider : IAnimeProvider
         return this;
     }
 
-    public Task<PagedResultDto<ExternalAnimeDto>> SearchAnimeAsync(string query, int page, bool includeAdult = false, CancellationToken cancellationToken = default)
+    public Task<PagedResultDto<ExternalMediaDto>> SearchAnimeAsync(string query, int page, bool includeAdult = false, CancellationToken cancellationToken = default)
     {
         LastIncludeAdult = includeAdult;
         ThrowIfDown();
@@ -65,10 +66,10 @@ public sealed class FakeAnimeProvider : IAnimeProvider
             .Where(a => a.Title.Contains(query, StringComparison.OrdinalIgnoreCase) && (includeAdult || !a.IsAdult))
             .ToList();
 
-        return Task.FromResult(new PagedResultDto<ExternalAnimeDto>(matches, page, 2, matches.Count));
+        return Task.FromResult(new PagedResultDto<ExternalMediaDto>(matches, page, 2, matches.Count));
     }
 
-    public Task<ExternalAnimeDto?> GetAnimeAsync(int externalId, CancellationToken cancellationToken = default)
+    public Task<ExternalMediaDto?> GetAnimeAsync(int externalId, CancellationToken cancellationToken = default)
     {
         GetAnimeCalls++;
         ThrowIfDown();

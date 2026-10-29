@@ -12,10 +12,10 @@ public class RandomPickerService(
 {
     private readonly Random _random = random ?? Random.Shared;
 
-    public async Task<AnimeSummaryDto?> PickAsync(
+    public async Task<MediaSummaryDto?> PickAsync(
         int userId,
         WatchListFilterDto? filter = null,
-        int? excludeExternalId = null,
+        MediaKey? exclude = null,
         CancellationToken cancellationToken = default)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -29,9 +29,10 @@ public class RandomPickerService(
             .ApplyAdultContent(showAdult)
             .ApplyFilter(filter);
 
-        if (excludeExternalId is { } excluded && await matches.CountAsync(cancellationToken) > 1)
+        if (exclude is not null && await matches.CountAsync(cancellationToken) > 1)
         {
-            matches = matches.Where(i => i.Media.ExternalId != excluded);
+            var (excludedType, excludedId) = exclude;
+            matches = matches.Where(i => i.Media.Type != excludedType || i.Media.ExternalId != excludedId);
         }
 
         var count = await matches.CountAsync(cancellationToken);
@@ -40,7 +41,7 @@ public class RandomPickerService(
             return null;
         }
 
-        // Count then skip: only the chosen anime is loaded, not the whole list.
+        // Count then skip: only the chosen title is loaded, not the whole list.
         var mediaId = await matches
             .OrderBy(i => i.Id)
             .Skip(_random.Next(count))
@@ -53,6 +54,6 @@ public class RandomPickerService(
             .ThenInclude(mg => mg.Genre)
             .SingleAsync(m => m.Id == mediaId, cancellationToken);
 
-        return AnimeMapper.ToSummary(media);
+        return MediaMapper.ToSummary(media);
     }
 }

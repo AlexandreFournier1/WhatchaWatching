@@ -18,11 +18,11 @@ public sealed class FallbackAnimeProvider(
     private const string JIKAN = "Jikan";
     private const string ANILIST = "AniList";
 
-    public Task<PagedResultDto<ExternalAnimeDto>> SearchAnimeAsync(
+    public Task<PagedResultDto<ExternalMediaDto>> SearchAnimeAsync(
         string query, int page, bool includeAdult = false, CancellationToken cancellationToken = default) =>
         AskAsync(provider => provider.SearchAnimeAsync(query, page, includeAdult, cancellationToken));
 
-    public Task<ExternalAnimeDto?> GetAnimeAsync(int externalId, CancellationToken cancellationToken = default) =>
+    public Task<ExternalMediaDto?> GetAnimeAsync(int externalId, CancellationToken cancellationToken = default) =>
         AskAsync(provider => provider.GetAnimeAsync(externalId, cancellationToken));
 
     private async Task<T> AskAsync<T>(Func<IAnimeProvider, Task<T>> call)

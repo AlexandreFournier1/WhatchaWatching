@@ -5,12 +5,12 @@ namespace WhatchaWatching.Application.Services;
 public interface IRandomPickerService
 {
     /// <summary>
-    /// Picks one anime at random from the user's list. When <paramref name="excludeExternalId"/> is set,
-    /// that anime is skipped unless it is the only match. Returns null when nothing matches.
+    /// Picks one title at random from the user's list (of one type when the filter says so). When
+    /// <paramref name="exclude"/> is set, that title is skipped unless it is the only match. Returns null when nothing matches.
     /// </summary>
-    Task<AnimeSummaryDto?> PickAsync(
+    Task<MediaSummaryDto?> PickAsync(
         int userId,
         WatchListFilterDto? filter = null,
-        int? excludeExternalId = null,
+        MediaKey? exclude = null,
         CancellationToken cancellationToken = default);
 }

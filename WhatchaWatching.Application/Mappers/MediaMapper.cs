@@ -5,9 +5,10 @@ using WhatchaWatching.Infrastructure.Data.Entities;
 
 namespace WhatchaWatching.Application.Mappers;
 
-internal static class AnimeMapper
+internal static class MediaMapper
 {
-    public static AnimeSummaryDto ToSummary(MediaEntity media) => new(
+    public static MediaSummaryDto ToSummary(MediaEntity media) => new(
+        media.Type,
         media.ExternalId,
         media.Title,
         media.ImageUrl,
@@ -19,12 +20,14 @@ internal static class AnimeMapper
         media.Score,
         media.Status.ToString())
     {
+        Seasons = media.SeasonCount,
         IsCustom = media.CreatedByUserId is not null,
         IsAdult = media.IsAdult,
         StreamingLinks = media.StreamingLinks.OrderBy(l => l.Site).Select(l => new StreamingLinkDto(l.Site, l.Url)).ToList()
     };
 
-    public static AnimeSummaryDto ToSummary(ExternalAnimeDto anime) => new(
+    public static MediaSummaryDto ToSummary(ExternalMediaDto anime) => new(
+        anime.Type,
         anime.ExternalId,
         anime.Title,
         anime.ImageUrl,
@@ -36,12 +39,13 @@ internal static class AnimeMapper
         anime.Score,
         anime.Status?.ToString())
     {
+        Seasons = anime.SeasonCount,
         StreamingLinks = anime.StreamingLinks,
         IsAdult = anime.IsAdult
     };
 
-    /// <summary>Copies what Jikan says onto the stored anime. Genres are handled by the caller.</summary>
-    public static void Apply(MediaEntity media, ExternalAnimeDto anime, DateTime syncedAt)
+    /// <summary>Copies what the provider says onto the stored title. Genres are handled by the caller.</summary>
+    public static void Apply(MediaEntity media, ExternalMediaDto anime, DateTime syncedAt)
     {
         media.Title = Truncate(anime.Title, ConfigurationConstants.LARGE_SIZE) ?? string.Empty;
         media.OriginalTitle = Truncate(anime.OriginalTitle, ConfigurationConstants.LARGE_SIZE);
@@ -49,6 +53,7 @@ internal static class AnimeMapper
         media.ImageUrl = Truncate(anime.ImageUrl, ConfigurationConstants.LARGE_SIZE);
         media.ReleaseDate = anime.ReleaseDate;
         media.EpisodeCount = anime.EpisodeCount;
+        media.SeasonCount = anime.SeasonCount;
         media.EpisodeDurationMinutes = anime.EpisodeDurationMinutes;
         // Jikan sometimes omits the status; an entry it cannot describe is most likely an old one.
         media.Status = anime.Status ?? MediaStatus.Finished;

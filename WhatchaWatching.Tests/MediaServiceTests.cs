@@ -9,20 +9,20 @@ using WhatchaWatching.Tests.TestSupport;
 
 namespace WhatchaWatching.Tests;
 
-public class AnimeServiceTests
+public class MediaServiceTests
 {
     private readonly FakeAnimeProvider _provider = new();
     private readonly TestDbContextFactory _db = new();
     private readonly MutableTimeProvider _time = new(new DateTimeOffset(2026, 10, 24, 12, 0, 0, TimeSpan.Zero));
 
-    private AnimeService CreateService() => new(_provider, _db, _time, NullLogger<AnimeService>.Instance);
+    private MediaService CreateService() => new(_provider, _db, _time, NullLogger<MediaService>.Instance);
 
     [Fact]
     public async Task Search_ReturnsSummariesAndPaging()
     {
         _provider.With(FakeAnimeProvider.Anime(1, "Frieren", 24, "Fantasy", "Adventure"), FakeAnimeProvider.Anime(2, "Other"));
 
-        var result = await CreateService().SearchAsync("frieren", 1);
+        var result = await CreateService().SearchAsync(MediaType.Anime, "frieren", 1);
 
         var anime = Assert.Single(result.Results.Items);
         Assert.Equal(1, anime.Id);
@@ -38,7 +38,7 @@ public class AnimeServiceTests
     {
         _provider.Failure = new ExternalApiException("down");
 
-        var result = await CreateService().SearchAsync("   ", 1);
+        var result = await CreateService().SearchAsync(MediaType.Anime, "   ", 1);
 
         Assert.Empty(result.Results.Items);
         Assert.False(result.IsLocalOnly);
@@ -49,7 +49,7 @@ public class AnimeServiceTests
     {
         _provider.Failure = new ExternalApiException("down");
 
-        await Assert.ThrowsAsync<AnimeProviderUnavailableException>(() => CreateService().SearchAsync("x", 1));
+        await Assert.ThrowsAsync<MediaProviderUnavailableException>(() => CreateService().SearchAsync(MediaType.Anime, "x", 1));
     }
 
     [Fact]
@@ -60,12 +60,12 @@ public class AnimeServiceTests
             FakeAnimeProvider.Anime(2, "Other show", 24, "Drama"),
             FakeAnimeProvider.Anime(3, "Frieren Special", 12, "Fantasy"));
         var service = CreateService();
-        await service.GetAsync(1);
-        await service.GetAsync(2);
-        await service.GetAsync(3);
+        await service.GetAsync(MediaType.Anime, 1);
+        await service.GetAsync(MediaType.Anime, 2);
+        await service.GetAsync(MediaType.Anime, 3);
 
         _provider.Failure = new ExternalApiException("down");
-        var result = await service.SearchAsync("Frieren", 1);
+        var result = await service.SearchAsync(MediaType.Anime, "Frieren", 1);
 
         Assert.True(result.IsLocalOnly);
         Assert.Equal(["Frieren", "Frieren Special"], result.Results.Items.Select(a => a.Title));
@@ -82,11 +82,11 @@ public class AnimeServiceTests
         var service = CreateService();
         foreach (var anime in animes)
         {
-            await service.GetAsync(anime.ExternalId);
+            await service.GetAsync(MediaType.Anime, anime.ExternalId);
         }
 
         _provider.Failure = new ExternalApiException("down");
-        var second = await service.SearchAsync("Show", 2);
+        var second = await service.SearchAsync(MediaType.Anime, "Show", 2);
 
         Assert.Equal(3, second.Results.Items.Count);
         Assert.Equal(2, second.Results.TotalPages);
@@ -98,7 +98,7 @@ public class AnimeServiceTests
     {
         _provider.With(FakeAnimeProvider.Anime(7, "Stored", 24, "Action", "Comedy"));
 
-        var anime = await CreateService().GetAsync(7);
+        var anime = await CreateService().GetAsync(MediaType.Anime, 7);
 
         Assert.Equal("Stored", anime!.Title);
         await using var context = _db.CreateDbContext();
@@ -115,10 +115,10 @@ public class AnimeServiceTests
     {
         _provider.With(FakeAnimeProvider.Anime(1));
         var service = CreateService();
-        await service.GetAsync(1);
+        await service.GetAsync(MediaType.Anime, 1);
 
         _time.Advance(TimeSpan.FromDays(6));
-        await service.GetAsync(1);
+        await service.GetAsync(MediaType.Anime, 1);
 
         Assert.Equal(1, _provider.GetAnimeCalls);
     }
@@ -128,11 +128,11 @@ public class AnimeServiceTests
     {
         _provider.With(FakeAnimeProvider.Anime(1, "Old title", 24, "Action", "Comedy"));
         var service = CreateService();
-        await service.GetAsync(1);
+        await service.GetAsync(MediaType.Anime, 1);
 
         _provider.With(FakeAnimeProvider.Anime(1, "New title", 24, "Action", "Drama"));
         _time.Advance(TimeSpan.FromDays(8));
-        var anime = await service.GetAsync(1);
+        var anime = await service.GetAsync(MediaType.Anime, 1);
 
         Assert.Equal("New title", anime!.Title);
         Assert.Equal(["Action", "Drama"], anime.Genres);
@@ -147,8 +147,8 @@ public class AnimeServiceTests
         _provider.With(FakeAnimeProvider.Anime(1, "One", 24, "Action"), FakeAnimeProvider.Anime(2, "Two", 24, "Action"));
         var service = CreateService();
 
-        await service.GetAsync(1);
-        await service.GetAsync(2);
+        await service.GetAsync(MediaType.Anime, 1);
+        await service.GetAsync(MediaType.Anime, 2);
 
         await using var context = _db.CreateDbContext();
         Assert.Equal(1, await context.Genres.CountAsync());
@@ -160,11 +160,11 @@ public class AnimeServiceTests
     {
         _provider.With(FakeAnimeProvider.Anime(1, "Kept"));
         var service = CreateService();
-        await service.GetAsync(1);
+        await service.GetAsync(MediaType.Anime, 1);
 
         _time.Advance(TimeSpan.FromDays(30));
         _provider.Failure = new ExternalApiException("down");
-        var anime = await service.GetAsync(1);
+        var anime = await service.GetAsync(MediaType.Anime, 1);
 
         Assert.Equal("Kept", anime!.Title);
     }
@@ -174,13 +174,13 @@ public class AnimeServiceTests
     {
         _provider.Failure = new ExternalApiException("down");
 
-        await Assert.ThrowsAsync<AnimeProviderUnavailableException>(() => CreateService().GetAsync(1));
+        await Assert.ThrowsAsync<MediaProviderUnavailableException>(() => CreateService().GetAsync(MediaType.Anime, 1));
     }
 
     [Fact]
     public async Task Get_UnknownAnime_ReturnsNull()
     {
-        Assert.Null(await CreateService().GetAsync(404));
+        Assert.Null(await CreateService().GetAsync(MediaType.Anime, 404));
     }
 
     [Fact]
@@ -189,7 +189,7 @@ public class AnimeServiceTests
         var anime = FakeAnimeProvider.Anime(1) with { Title = new string('t', 1000), Rating = new string('r', 200) };
         _provider.With(anime);
 
-        await CreateService().GetAsync(1);
+        await CreateService().GetAsync(MediaType.Anime, 1);
 
         await using var context = _db.CreateDbContext();
         var media = await context.Media.SingleAsync();
@@ -197,7 +197,7 @@ public class AnimeServiceTests
         Assert.Equal(64, media.Rating!.Length);
     }
 
-    private static ExternalAnimeDto WithLinks(ExternalAnimeDto anime, params (string Site, string Url)[] links) =>
+    private static ExternalMediaDto WithLinks(ExternalMediaDto anime, params (string Site, string Url)[] links) =>
         anime with { StreamingLinks = links.Select(l => new StreamingLinkDto(l.Site, l.Url)).ToList() };
 
     [Fact]
@@ -206,7 +206,7 @@ public class AnimeServiceTests
         _provider.With(WithLinks(
             FakeAnimeProvider.Anime(1), ("Netflix", "https://netflix.test/1"), ("Crunchyroll", "https://cr.test/1")));
 
-        var anime = await CreateService().GetAsync(1);
+        var anime = await CreateService().GetAsync(MediaType.Anime, 1);
 
         Assert.Equal(["Crunchyroll", "Netflix"], anime!.StreamingLinks.Select(l => l.Site));
         await using var context = _db.CreateDbContext();
@@ -218,9 +218,9 @@ public class AnimeServiceTests
     {
         _provider.With(WithLinks(FakeAnimeProvider.Anime(1), ("Netflix", "https://netflix.test/1")));
         var service = CreateService();
-        await service.GetAsync(1);
+        await service.GetAsync(MediaType.Anime, 1);
 
-        var anime = await service.GetAsync(1);
+        var anime = await service.GetAsync(MediaType.Anime, 1);
 
         Assert.Equal(1, _provider.GetAnimeCalls);
         Assert.Equal("https://netflix.test/1", Assert.Single(anime!.StreamingLinks).Url);
@@ -232,12 +232,12 @@ public class AnimeServiceTests
         _provider.With(WithLinks(
             FakeAnimeProvider.Anime(1), ("Netflix", "https://netflix.test/1"), ("Hulu", "https://hulu.test/1")));
         var service = CreateService();
-        await service.GetAsync(1);
+        await service.GetAsync(MediaType.Anime, 1);
 
         _provider.With(WithLinks(
             FakeAnimeProvider.Anime(1), ("Netflix", "https://netflix.test/1"), ("Prime Video", "https://prime.test/1")));
         _time.Advance(TimeSpan.FromDays(8));
-        var anime = await service.GetAsync(1);
+        var anime = await service.GetAsync(MediaType.Anime, 1);
 
         Assert.Equal(["Netflix", "Prime Video"], anime!.StreamingLinks.Select(l => l.Site));
         await using var context = _db.CreateDbContext();
@@ -249,11 +249,11 @@ public class AnimeServiceTests
     {
         _provider.With(WithLinks(FakeAnimeProvider.Anime(1), ("Netflix", "https://netflix.test/1")));
         var service = CreateService();
-        await service.GetAsync(1);
+        await service.GetAsync(MediaType.Anime, 1);
 
         _provider.With(FakeAnimeProvider.Anime(1));
         _time.Advance(TimeSpan.FromDays(8));
-        var anime = await service.GetAsync(1);
+        var anime = await service.GetAsync(MediaType.Anime, 1);
 
         Assert.Equal("Netflix", Assert.Single(anime!.StreamingLinks).Site);
     }
@@ -263,7 +263,7 @@ public class AnimeServiceTests
     {
         _provider.With(FakeAnimeProvider.Anime(1));
         var service = CreateService();
-        await service.GetAsync(1);
+        await service.GetAsync(MediaType.Anime, 1);
         await using (var context = _db.CreateDbContext())
         {
             // What the migration does to the anime stored before the links existed.
@@ -276,7 +276,7 @@ public class AnimeServiceTests
         }
 
         _provider.With(WithLinks(FakeAnimeProvider.Anime(1), ("Netflix", "https://netflix.test/1")));
-        var anime = await service.GetAsync(1);
+        var anime = await service.GetAsync(MediaType.Anime, 1);
 
         Assert.Equal(2, _provider.GetAnimeCalls);
         Assert.Single(anime!.StreamingLinks);
@@ -287,10 +287,10 @@ public class AnimeServiceTests
     {
         _provider.With(WithLinks(FakeAnimeProvider.Anime(1, "Frieren"), ("Netflix", "https://netflix.test/1")));
         var service = CreateService();
-        await service.GetAsync(1);
+        await service.GetAsync(MediaType.Anime, 1);
 
         _provider.Failure = new ExternalApiException("down");
-        var result = await service.SearchAsync("Frieren", 1);
+        var result = await service.SearchAsync(MediaType.Anime, "Frieren", 1);
 
         Assert.True(result.IsLocalOnly);
         Assert.Empty(Assert.Single(result.Results.Items).StreamingLinks);

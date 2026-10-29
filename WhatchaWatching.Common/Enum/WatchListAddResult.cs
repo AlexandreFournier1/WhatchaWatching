@@ -4,5 +4,5 @@ public enum WatchListAddResult
 {
     Added,
     AlreadyInList,
-    AnimeNotFound
+    NotFound
 }

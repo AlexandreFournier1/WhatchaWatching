@@ -83,7 +83,7 @@
     private bool showConditions;
     private bool profileAllowsAdult;
     private bool loading => state == State.Loading;
-    private AnimeSummaryDto? pick;
+    private MediaSummaryDto? pick;
     private IReadOnlyList<string> genreOptions = [];
     private IReadOnlyCollection<string> genres = [];
     private IReadOnlyCollection<string> duration = [];
@@ -135,7 +135,7 @@
         {
             if (await CurrentUser.GetUserIdAsync() is { } userId)
             {
-                genreOptions = await WatchList.GetGenresAsync(userId);
+                genreOptions = await WatchList.GetGenresAsync(userId, MediaType.Anime);
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -163,8 +163,8 @@
         try
         {
             // The switch can only hide adult anime: the service shows them only if the profile allows it too.
-            var filter = FilterOptions.ToFilter(genres, duration) with { IncludeAdult = AdultState.Enabled };
-            pick = await Picker.PickAsync(userId.Value, filter, pick?.Id);
+            var filter = FilterOptions.ToFilter(genres, duration) with { Type = MediaType.Anime, IncludeAdult = AdultState.Enabled };
+            pick = await Picker.PickAsync(userId.Value, filter, pick is null ? null : new MediaKey(pick.Type, pick.Id));
             state = pick is null ? State.Nothing : State.Picked;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

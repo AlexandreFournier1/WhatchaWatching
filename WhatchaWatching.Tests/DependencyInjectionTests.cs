@@ -89,7 +89,7 @@ public class DependencyInjectionTests
             .AddApplication(BuildConfiguration("Server=localhost;Database=whatchawatching"));
 
         // Not resolved: building the database options connects to MySQL to detect its version.
-        Assert.Contains(services, d => d.ServiceType == typeof(IAnimeService) && d.ImplementationType == typeof(AnimeService));
+        Assert.Contains(services, d => d.ServiceType == typeof(IMediaService) && d.ImplementationType == typeof(MediaService));
         Assert.Contains(services, d => d.ServiceType == typeof(IWatchListService) && d.ImplementationType == typeof(WatchListService));
         Assert.Contains(services, d => d.ServiceType == typeof(IRandomPickerService) && d.ImplementationType == typeof(RandomPickerService));
         Assert.Contains(services, d => d.ServiceType == typeof(TimeProvider));

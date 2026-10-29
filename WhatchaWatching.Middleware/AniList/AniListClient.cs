@@ -35,7 +35,7 @@ public sealed class AniListClient(HttpClient httpClient) : IAniListClient
     // The default web options read the camelCase names AniList uses.
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    public async Task<PagedResultDto<ExternalAnimeDto>> SearchAnimeAsync(
+    public async Task<PagedResultDto<ExternalMediaDto>> SearchAnimeAsync(
         string query, int page, bool includeAdult = false, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(query);
@@ -48,17 +48,17 @@ public sealed class AniListClient(HttpClient httpClient) : IAniListClient
         var pageData = response?.Page;
         var items = (pageData?.Media ?? [])
             .Select(AniListMapper.ToDto)
-            .OfType<ExternalAnimeDto>()
+            .OfType<ExternalMediaDto>()
             .ToList();
 
-        return new PagedResultDto<ExternalAnimeDto>(
+        return new PagedResultDto<ExternalMediaDto>(
             items,
             pageData?.PageInfo?.CurrentPage ?? currentPage,
             pageData?.PageInfo?.LastPage ?? 1,
             pageData?.PageInfo?.Total ?? items.Count);
     }
 
-    public async Task<ExternalAnimeDto?> GetAnimeAsync(int externalId, CancellationToken cancellationToken = default)
+    public async Task<ExternalMediaDto?> GetAnimeAsync(int externalId, CancellationToken cancellationToken = default)
     {
         var response = await PostAsync<AniListMediaData>(
             DetailsQuery, new { id = externalId }, cancellationToken, notFoundIsNull: true);

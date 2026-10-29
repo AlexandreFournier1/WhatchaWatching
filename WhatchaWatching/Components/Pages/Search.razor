@@ -1,5 +1,5 @@
 @page "/search"
-@inject IAnimeService AnimeService
+@inject IMediaService MediaService
 @inject IWatchListService WatchList
 @inject ICurrentUser CurrentUser
 @inject IUserSettingsService Settings
@@ -109,7 +109,7 @@
 </section>
 
 @code {
-    private static readonly PagedResultDto<AnimeSummaryDto> NoResult = new([], 1, 1, 0);
+    private static readonly PagedResultDto<MediaSummaryDto> NoResult = new([], 1, 1, 0);
 
     // The skeleton is part of the prerendered HTML; the interactive pass then loads for real.
     private bool loading = true;
@@ -118,7 +118,7 @@
     private bool localOnly;
     private bool profileAllowsAdult;
     private int? userId;
-    private PagedResultDto<AnimeSummaryDto> result = NoResult;
+    private PagedResultDto<MediaSummaryDto> result = NoResult;
     private HashSet<int> listed = [];
 
     // Anime being added to or removed from the list: their button shows a spinner and cannot be clicked again.
@@ -152,16 +152,16 @@
             profileAllowsAdult = userId is { } viewer && await Settings.ShowsAdultContentAsync(viewer);
             var includeAdult = profileAllowsAdult && AdultState.Enabled;
             var search = string.IsNullOrWhiteSpace(Query)
-                ? new AnimeSearchResultDto(NoResult, IsLocalOnly: false)
-                : await AnimeService.SearchAsync(Query.Trim(), PageNumber ?? 1, includeAdult);
+                ? new MediaSearchResultDto(NoResult, IsLocalOnly: false)
+                : await MediaService.SearchAsync(MediaType.Anime, Query.Trim(), PageNumber ?? 1, includeAdult);
             result = search.Results;
             localOnly = search.IsLocalOnly;
 
             listed = userId is { } id
-                ? (await WatchList.GetListedIdsAsync(id, result.Items.Select(a => a.Id).ToList())).ToHashSet()
+                ? (await WatchList.GetListedIdsAsync(id, MediaType.Anime, result.Items.Select(a => a.Id).ToList())).ToHashSet()
                 : [];
         }
-        catch (AnimeProviderUnavailableException)
+        catch (MediaProviderUnavailableException)
         {
             failed = true;
         }
@@ -189,10 +189,10 @@
         {
             if (listed.Contains(externalId))
             {
-                await WatchList.RemoveAsync(id, externalId);
+                await WatchList.RemoveAsync(id, MediaType.Anime, externalId);
                 listed.Remove(externalId);
             }
-            else if (await WatchList.AddAsync(id, externalId) == WatchListAddResult.AnimeNotFound)
+            else if (await WatchList.AddAsync(id, MediaType.Anime, externalId) == WatchListAddResult.NotFound)
             {
                 actionFailed = true;
             }

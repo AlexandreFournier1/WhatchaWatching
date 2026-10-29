@@ -16,13 +16,13 @@ public class AdultContentTests
 
     private readonly FakeAnimeProvider _provider = new();
     private readonly TestDbContextFactory _db = new();
-    private readonly AnimeService _anime;
+    private readonly MediaService _anime;
     private readonly WatchListService _watchList;
     private readonly UserSettingsService _settings;
 
     public AdultContentTests()
     {
-        _anime = new AnimeService(_provider, _db, TimeProvider.System, NullLogger<AnimeService>.Instance);
+        _anime = new MediaService(_provider, _db, TimeProvider.System, NullLogger<MediaService>.Instance);
         _watchList = new WatchListService(_db, _anime);
         _settings = new UserSettingsService(_db);
 
@@ -32,7 +32,7 @@ public class AdultContentTests
         context.SaveChanges();
     }
 
-    private static ExternalAnimeDto AdultAnime(int id, string title = "Adult show") =>
+    private static ExternalMediaDto AdultAnime(int id, string title = "Adult show") =>
         FakeAnimeProvider.Anime(id, title) with { IsAdult = true };
 
     [Fact]
@@ -64,11 +64,11 @@ public class AdultContentTests
     {
         _provider.With(FakeAnimeProvider.Anime(1, "Plain show"), AdultAnime(2, "Plain adult"));
 
-        var safe = await _anime.SearchAsync("Plain", 1);
+        var safe = await _anime.SearchAsync(MediaType.Anime, "Plain", 1);
         Assert.False(_provider.LastIncludeAdult);
         Assert.Equal(["Plain show"], safe.Results.Items.Select(a => a.Title));
 
-        var all = await _anime.SearchAsync("Plain", 1, includeAdult: true);
+        var all = await _anime.SearchAsync(MediaType.Anime, "Plain", 1, includeAdult: true);
         Assert.True(_provider.LastIncludeAdult);
         Assert.Equal(2, all.Results.Items.Count);
         Assert.Contains(all.Results.Items, a => a.IsAdult);
@@ -78,9 +78,9 @@ public class AdultContentTests
     public async Task Search_KeepsAnAdultAnimeOutEvenIfTheProviderReturnsOne()
     {
         var careless = new StubAniListClient { Anime = AdultAnime(1) };
-        var service = new AnimeService(careless, _db, TimeProvider.System, NullLogger<AnimeService>.Instance);
+        var service = new MediaService(careless, _db, TimeProvider.System, NullLogger<MediaService>.Instance);
 
-        var result = await service.SearchAsync("x", 1);
+        var result = await service.SearchAsync(MediaType.Anime, "x", 1);
 
         Assert.Empty(result.Results.Items);
     }
@@ -90,7 +90,7 @@ public class AdultContentTests
     {
         _provider.With(AdultAnime(1));
 
-        Assert.Null(await _anime.GetAsync(1));
+        Assert.Null(await _anime.GetAsync(MediaType.Anime, 1));
 
         await using var context = _db.CreateDbContext();
         Assert.Equal(0, await context.Media.CountAsync());
@@ -101,7 +101,7 @@ public class AdultContentTests
     {
         _provider.With(AdultAnime(1));
 
-        var anime = await _anime.GetAsync(1, includeAdult: true);
+        var anime = await _anime.GetAsync(MediaType.Anime, 1, includeAdult: true);
 
         Assert.True(anime!.IsAdult);
         await using var context = _db.CreateDbContext();
@@ -112,22 +112,22 @@ public class AdultContentTests
     public async Task Get_AStoredAdultAnime_IsHiddenAgainWhenTheSettingIsOff()
     {
         _provider.With(AdultAnime(1));
-        await _anime.GetAsync(1, includeAdult: true);
+        await _anime.GetAsync(MediaType.Anime, 1, includeAdult: true);
 
-        Assert.Null(await _anime.GetAsync(1));
-        Assert.NotNull(await _anime.GetAsync(1, includeAdult: true));
+        Assert.Null(await _anime.GetAsync(MediaType.Anime, 1));
+        Assert.NotNull(await _anime.GetAsync(MediaType.Anime, 1, includeAdult: true));
     }
 
     [Fact]
     public async Task SearchingTheStoredAnime_HidesAdultOnesUnlessAllowed()
     {
         _provider.With(AdultAnime(1, "Stored adult"), FakeAnimeProvider.Anime(2, "Stored plain"));
-        await _anime.GetAsync(1, includeAdult: true);
-        await _anime.GetAsync(2);
+        await _anime.GetAsync(MediaType.Anime, 1, includeAdult: true);
+        await _anime.GetAsync(MediaType.Anime, 2);
         _provider.Failure = new ExternalApiException("down");
 
-        var safe = await _anime.SearchAsync("Stored", 1);
-        var all = await _anime.SearchAsync("Stored", 1, includeAdult: true);
+        var safe = await _anime.SearchAsync(MediaType.Anime, "Stored", 1);
+        var all = await _anime.SearchAsync(MediaType.Anime, "Stored", 1, includeAdult: true);
 
         Assert.Equal(["Stored plain"], safe.Results.Items.Select(a => a.Title));
         Assert.Equal(2, all.Results.Items.Count);
@@ -138,16 +138,16 @@ public class AdultContentTests
     {
         _provider.With(AdultAnime(1));
 
-        Assert.Equal(WatchListAddResult.AnimeNotFound, await _watchList.AddAsync(Safe, 1));
-        Assert.Equal(WatchListAddResult.Added, await _watchList.AddAsync(Adult, 1));
+        Assert.Equal(WatchListAddResult.NotFound, await _watchList.AddAsync(Safe, MediaType.Anime, 1));
+        Assert.Equal(WatchListAddResult.Added, await _watchList.AddAsync(Adult, MediaType.Anime, 1));
     }
 
     [Fact]
     public async Task TheList_HidesAdultAnimeFromAUserWhoTurnedTheSettingOff_AndShowsThemAgainAfterwards()
     {
         _provider.With(AdultAnime(1, "Adult one"), FakeAnimeProvider.Anime(2, "Plain one", 24, "Comedy"));
-        await _watchList.AddAsync(Adult, 1);
-        await _watchList.AddAsync(Adult, 2);
+        await _watchList.AddAsync(Adult, MediaType.Anime, 1);
+        await _watchList.AddAsync(Adult, MediaType.Anime, 2);
 
         Assert.Equal(2, (await _watchList.GetAsync(Adult)).Count);
 
@@ -164,8 +164,8 @@ public class AdultContentTests
         _provider.With(
             AdultAnime(1) with { Genres = [new ExternalGenreDto(12, "Hentai")] },
             FakeAnimeProvider.Anime(2, "Plain one", 24, "Comedy"));
-        await _watchList.AddAsync(Adult, 1);
-        await _watchList.AddAsync(Adult, 2);
+        await _watchList.AddAsync(Adult, MediaType.Anime, 1);
+        await _watchList.AddAsync(Adult, MediaType.Anime, 2);
 
         Assert.Equal(["Comedy", "Hentai"], await _watchList.GetGenresAsync(Adult));
 
@@ -177,8 +177,8 @@ public class AdultContentTests
     public async Task ThePicker_NeverPicksAHiddenAdultAnime()
     {
         _provider.With(AdultAnime(1, "Adult one"), FakeAnimeProvider.Anime(2, "Plain one"));
-        await _watchList.AddAsync(Adult, 1);
-        await _watchList.AddAsync(Adult, 2);
+        await _watchList.AddAsync(Adult, MediaType.Anime, 1);
+        await _watchList.AddAsync(Adult, MediaType.Anime, 2);
         await _settings.SetShowsAdultContentAsync(Adult, false);
         var picker = new RandomPickerService(_db, new Random(3));
 
@@ -192,7 +192,7 @@ public class AdultContentTests
     public async Task ThePicker_CanPickAdultAnimeWhenTheSettingIsOn()
     {
         _provider.With(AdultAnime(1, "Adult one"));
-        await _watchList.AddAsync(Adult, 1);
+        await _watchList.AddAsync(Adult, MediaType.Anime, 1);
         var picker = new RandomPickerService(_db, new Random(3));
 
         Assert.Equal("Adult one", (await picker.PickAsync(Adult))!.Title);
@@ -202,8 +202,8 @@ public class AdultContentTests
     public async Task TheSwitchOff_HidesAdultAnimeFromTheListAndThePickEvenWhenTheProfileAllowsThem()
     {
         _provider.With(AdultAnime(1, "Adult one"), FakeAnimeProvider.Anime(2, "Plain one"));
-        await _watchList.AddAsync(Adult, 1);
-        await _watchList.AddAsync(Adult, 2);
+        await _watchList.AddAsync(Adult, MediaType.Anime, 1);
+        await _watchList.AddAsync(Adult, MediaType.Anime, 2);
         var switchedOff = WatchListFilterDto.None with { IncludeAdult = false };
         var picker = new RandomPickerService(_db, new Random(5));
 
@@ -221,8 +221,8 @@ public class AdultContentTests
     public async Task TheSwitchOn_NeverShowsMoreThanTheProfileAllows()
     {
         _provider.With(AdultAnime(1, "Adult one"), FakeAnimeProvider.Anime(2, "Plain one"));
-        await _watchList.AddAsync(Adult, 1);
-        await _watchList.AddAsync(Adult, 2);
+        await _watchList.AddAsync(Adult, MediaType.Anime, 1);
+        await _watchList.AddAsync(Adult, MediaType.Anime, 2);
         await _settings.SetShowsAdultContentAsync(Adult, false);
         var switchedOn = WatchListFilterDto.None with { IncludeAdult = true };
         var picker = new RandomPickerService(_db, new Random(5));

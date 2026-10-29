@@ -15,7 +15,7 @@ public sealed class JikanClient(HttpClient httpClient) : IJikanClient
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
     };
 
-    public async Task<PagedResultDto<ExternalAnimeDto>> SearchAnimeAsync(
+    public async Task<PagedResultDto<ExternalMediaDto>> SearchAnimeAsync(
         string query, int page, bool includeAdult = false, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(query);
@@ -28,14 +28,14 @@ public sealed class JikanClient(HttpClient httpClient) : IJikanClient
         var items = (response?.Data ?? []).Select(JikanMapper.ToDto).ToList();
         var pagination = response?.Pagination;
 
-        return new PagedResultDto<ExternalAnimeDto>(
+        return new PagedResultDto<ExternalMediaDto>(
             items,
             pagination?.CurrentPage ?? currentPage,
             pagination?.LastVisiblePage ?? 1,
             pagination?.Items?.Total ?? items.Count);
     }
 
-    public async Task<ExternalAnimeDto?> GetAnimeAsync(int externalId, CancellationToken cancellationToken = default)
+    public async Task<ExternalMediaDto?> GetAnimeAsync(int externalId, CancellationToken cancellationToken = default)
     {
         var response = await GetAsync<JikanResponse<JikanAnime>>($"anime/{externalId}", cancellationToken, notFoundIsNull: true);
         if (response?.Data is not { } anime)
