@@ -105,8 +105,11 @@ Indexes: unique `(Type, ExternalId)`; non-unique `Type`, `Status`.
 | Field | Type | Null | Notes |
 |---|---|---|---|
 | Id | int | no | PK |
-| ExternalId | int | no | Unique. Id of the genre in the external provider. |
-| Name | string(512) | no | Unique. |
+| Source | string(64) | no | `MyAnimeList` (anime) or `Tmdb` (movies and TV series). Existing rows are `MyAnimeList`. |
+| ExternalId | int | no | Id of the genre in the provider named by `Source` (the two numberings overlap). |
+| Name | string(512) | no | Not unique: both providers have a "Comedy", and the watchlist filter works on names. |
+
+Index: unique `(Source, ExternalId)`.
 
 ### MediaGenre
 Join table for the many-to-many between Media and Genre.
@@ -242,7 +245,7 @@ The connection string lives in the web project's user-secrets (`ConnectionString
 
 
 - **Authentication:** ASP.NET Core Identity, with an `int` key, cookie authentication, username + email + password (8 characters minimum, one digit, unique email). No email confirmation yet. Done in the web app (`Program.cs`, static Login/Register/Account pages, `ICurrentUser`).
-- **`MediaType` scope:** all four values (Anime, Manga, Movie, TVShow) are kept. Only Anime is populated for now.
+- **`MediaType` scope:** all four values (Anime, Manga, Movie, TVShow) are kept. Anime (Jikan, AniList) and Movie and TVShow (TMDB) are populated; Manga has no provider.
 - **No user rating:** the app stays basic. Users do not rate or annotate what they watch, so `WatchListItem` has no `UserScore` or `Notes`. `Media.Score` (the MyAnimeList score from Jikan) is kept, as a filter for the random picker.
 - **Adult content:** hidden by default. A user can turn it on in the account page (`Users.ShowAdultContent`); a switch next to the search and the random pick (`AdultFilterState`, kept for the browser session, default on) then lets them hide it again for the moment, but never show more than the profile allows (`WatchListFilterDto.IncludeAdult`). When on, searches ask the providers for it, and adult anime (`Media.IsAdult`) appear in details, list, genres and random pick. Without it they do not exist for that user: details return "not found", nothing is stored on their behalf, and an already listed adult anime is hidden (not removed). Anonymous visitors never see them.
 - **Anime added by hand:** a user can add an anime the providers lack (`/anime/new`). It is private (only its owner sees it, in the list, the picker and its page), limited to 200 per user, and removing it from the list deletes it. Shared lookups (`MediaService`, the stored-anime search) ignore it.
@@ -256,3 +259,4 @@ The connection string lives in the web project's user-secrets (`ConnectionString
 - `AddStreamingLinks` (`20261025083911`) creates the table `StreamingLinks` (nothing existing is changed or deleted) and marks every stored `Media` as never synchronized (`LastSyncedAt = NULL`), so that each anime fetches its data again, with its links, the next time it is opened. Applied to AlwaysData on 2026-10-25, before the code that uses it was deployed.
 - `AddCustomAnimeOwner` (`20261025112036`) adds the nullable column `Media.CreatedByUserId`, its index and its foreign key to `Users`. Nothing existing is changed or deleted: every stored anime keeps a null owner, that is, stays in the shared catalog. **Not applied yet** to AlwaysData: apply it **before** deploying the code that uses it.
 - `AddAdultContentSetting` (`20261025112850`) adds `Users.ShowAdultContent` and `Media.IsAdult`, both `false` for every existing row, and marks every stored `Media` as never synchronized so each anime fetches its data again, with the adult flag, the next time it is opened. Nothing is deleted. **Not applied yet** to AlwaysData: apply it **before** deploying the code that uses it (together with `AddCustomAnimeOwner`, which is also pending).
+- `AddGenreSource` (`20261029093851`) adds `Genres.Source` (every existing genre becomes `MyAnimeList`), drops the unique indexes on `ExternalId` and on `Name`, and adds the unique index `(Source, ExternalId)`. TMDB's genre ids overlap MyAnimeList's (14 is Horror on one and Fantasy on the other), so a movie could not be stored before. Nothing is deleted. **Not applied yet** to AlwaysData: apply it **before** deploying the code that uses it (with `AddCustomAnimeOwner` and `AddAdultContentSetting`, also pending).

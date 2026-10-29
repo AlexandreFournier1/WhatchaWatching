@@ -8,11 +8,13 @@ using WhatchaWatching.Common.Enum;
 using WhatchaWatching.Infrastructure.Data;
 using WhatchaWatching.Infrastructure.Data.Entities;
 using WhatchaWatching.Middleware;
+using WhatchaWatching.Middleware.Tmdb;
 
 namespace WhatchaWatching.Application.Services;
 
 public class MediaService(
     IAnimeProvider animeProvider,
+    ITmdbClient tmdbClient,
     IDbContextFactory<ApplicationDbContext> contextFactory,
     TimeProvider timeProvider,
     ILogger<MediaService> logger) : IMediaService
@@ -20,14 +22,25 @@ public class MediaService(
     // Scores and episode counts change slowly: a week-old copy saves a provider call.
     private static readonly TimeSpan SyncMaxAge = TimeSpan.FromDays(7);
 
-    // Only anime have a provider wired in: the movie and TV series ones come with TMDB's services.
     private static void EnsureSupported(MediaType type)
     {
-        if (type != MediaType.Anime)
+        if (type is not (MediaType.Anime or MediaType.Movie or MediaType.TVShow))
         {
-            throw new NotSupportedException($"{type} titles are not supported yet.");
+            throw new NotSupportedException($"{type} titles are not supported.");
         }
     }
+
+    // Anime come from Jikan (then AniList); movies and TV series only from TMDB.
+    private Task<PagedResultDto<ExternalMediaDto>> SearchProviderAsync(
+        MediaType type, string query, int page, bool includeAdult, CancellationToken cancellationToken) =>
+        type == MediaType.Anime
+            ? animeProvider.SearchAnimeAsync(query, page, includeAdult, cancellationToken)
+            : tmdbClient.SearchAsync(type, query, page, includeAdult, cancellationToken);
+
+    private Task<ExternalMediaDto?> GetFromProviderAsync(MediaType type, int externalId, CancellationToken cancellationToken) =>
+        type == MediaType.Anime
+            ? animeProvider.GetAnimeAsync(externalId, cancellationToken)
+            : tmdbClient.GetAsync(type, externalId, cancellationToken);
 
     public async Task<MediaSearchResultDto> SearchAsync(
         MediaType type, string query, int page, bool includeAdult = false, CancellationToken cancellationToken = default)
@@ -41,9 +54,9 @@ public class MediaService(
 
         try
         {
-            var result = await animeProvider.SearchAnimeAsync(query, page, includeAdult, cancellationToken);
+            var result = await SearchProviderAsync(type, query, page, includeAdult, cancellationToken);
 
-            // The provider was asked for safe anime already; this keeps an adult one out if it slips through.
+            // The provider was asked for safe titles already; this keeps an adult one out if it slips through.
             var results = new PagedResultDto<MediaSummaryDto>(
                 result.Items.Where(a => includeAdult || !a.IsAdult).Select(MediaMapper.ToSummary).ToList(),
                 result.Page,
@@ -54,7 +67,7 @@ public class MediaService(
         }
         catch (ExternalApiException ex)
         {
-            logger.LogWarning(ex, "No anime provider answered the search, looking in the stored anime.");
+            logger.LogWarning(ex, "No {Type} provider answered the search, looking in the stored titles.", type);
             return await SearchStoredAsync(type, query.Trim(), page, includeAdult, ex, cancellationToken);
         }
     }
@@ -129,7 +142,7 @@ public class MediaService(
         ExternalMediaDto? external;
         try
         {
-            external = await animeProvider.GetAnimeAsync(externalId, cancellationToken);
+            external = await GetFromProviderAsync(type, externalId, cancellationToken);
         }
         catch (ExternalApiException ex)
         {
@@ -138,7 +151,7 @@ public class MediaService(
                 throw new MediaProviderUnavailableException(ex);
             }
 
-            logger.LogWarning(ex, "No anime provider answered, serving the stored copy of anime {ExternalId}.", externalId);
+            logger.LogWarning(ex, "No provider answered, serving the stored copy of {Type} {ExternalId}.", type, externalId);
             return MediaMapper.ToSummary(stored);
         }
 
@@ -164,7 +177,7 @@ public class MediaService(
             var concurrent = await FindStoredAsync(retryContext, type, externalId, cancellationToken);
 
             return concurrent is null ? throw new InvalidOperationException(
-                $"Anime {externalId} could not be stored.") : MediaMapper.ToSummary(concurrent);
+                $"{type} {externalId} could not be stored.") : MediaMapper.ToSummary(concurrent);
         }
     }
 
@@ -202,7 +215,7 @@ public class MediaService(
     }
 
     /// <summary>
-    /// Makes the anime carry exactly the given links. An empty list changes nothing: it is more often a provider that
+    /// Makes the title carry exactly the given links. An empty list changes nothing: it is more often a provider that
     /// could not give its links than an anime that left every platform, and an old link is better than none.
     /// </summary>
     private static void SyncStreamingLinks(
@@ -213,19 +226,17 @@ public class MediaService(
             return;
         }
 
-        var outdated = media.StreamingLinks.Where(stored => links.All(l => l.Url != stored.Url)).ToList();
+        // A link is the pair (platform, address): TMDB gives every platform of a title the same address.
+        var outdated = media.StreamingLinks
+            .Where(stored => !links.Any(l => l.Site == stored.Site && l.Url == stored.Url))
+            .ToList();
         context.StreamingLinks.RemoveRange(outdated);
 
         foreach (var link in links)
         {
-            var stored = media.StreamingLinks.FirstOrDefault(s => s.Url == link.Url);
-            if (stored is null)
+            if (!media.StreamingLinks.Any(s => s.Site == link.Site && s.Url == link.Url))
             {
                 media.StreamingLinks.Add(new StreamingLinkEntity { Site = link.Site, Url = link.Url });
-            }
-            else
-            {
-                stored.Site = link.Site;
             }
         }
     }

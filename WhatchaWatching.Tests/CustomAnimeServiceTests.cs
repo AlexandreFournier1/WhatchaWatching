@@ -26,7 +26,7 @@ public class CustomAnimeServiceTests
     public CustomAnimeServiceTests()
     {
         _custom = new CustomAnimeService(_db);
-        _anime = new MediaService(_provider, _db, TimeProvider.System, NullLogger<MediaService>.Instance);
+        _anime = new MediaService(_provider, new FakeTmdbClient(), _db, TimeProvider.System, NullLogger<MediaService>.Instance);
         _watchList = new WatchListService(_db, _anime);
     }
 

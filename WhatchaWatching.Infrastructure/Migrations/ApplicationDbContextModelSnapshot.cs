@@ -170,12 +170,16 @@ namespace WhatchaWatching.Infrastructure.Migrations
                         .HasMaxLength(512)
                         .HasColumnType("varchar(512)");
 
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasDefaultValue("MyAnimeList");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("ExternalId")
-                        .IsUnique();
-
-                    b.HasIndex("Name")
+                    b.HasIndex("Source", "ExternalId")
                         .IsUnique();
 
                     b.ToTable("Genres");

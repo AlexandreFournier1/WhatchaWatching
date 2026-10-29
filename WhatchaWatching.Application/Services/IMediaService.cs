@@ -6,15 +6,15 @@ namespace WhatchaWatching.Application.Services;
 public interface IMediaService
 {
     /// <summary>
-    /// Searches the providers of this type (Jikan, then AniList for anime). When none answers, searches the titles
+    /// Searches the providers of this type (Jikan, then AniList for anime; TMDB for movies and TV series). When none answers, searches the titles
     /// already stored on this site and says so in <see cref="MediaSearchResultDto.IsLocalOnly"/>.
     /// </summary>
-    /// <param name="type">Only <see cref="MediaType.Anime"/> has a provider wired in for now.</param>
+    /// <param name="type">Anime, movie or TV series (TMDB provides the last two).</param>
     /// <param name="includeAdult">
     /// False (the default, and what anonymous visitors get) keeps adult titles out. Pass the user's own setting.
     /// </param>
     /// <exception cref="Exceptions.MediaProviderUnavailableException">No provider answered and no stored title matches.</exception>
-    /// <exception cref="NotSupportedException">No provider is wired in for this type yet.</exception>
+    /// <exception cref="NotSupportedException">The type is neither anime, movie nor TV series.</exception>
     Task<MediaSearchResultDto> SearchAsync(
         MediaType type, string query, int page, bool includeAdult = false, CancellationToken cancellationToken = default);
 
@@ -24,7 +24,7 @@ public interface IMediaService
     /// exist, or is adult and <paramref name="includeAdult"/> is false (nothing is stored in that case).
     /// </summary>
     /// <exception cref="Exceptions.MediaProviderUnavailableException">No provider answered and nothing is stored.</exception>
-    /// <exception cref="NotSupportedException">No provider is wired in for this type yet.</exception>
+    /// <exception cref="NotSupportedException">The type is neither anime, movie nor TV series.</exception>
     Task<MediaSummaryDto?> GetAsync(
         MediaType type, int externalId, bool includeAdult = false, CancellationToken cancellationToken = default);
 }

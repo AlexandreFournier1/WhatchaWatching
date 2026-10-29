@@ -15,7 +15,7 @@ public class MediaServiceTests
     private readonly TestDbContextFactory _db = new();
     private readonly MutableTimeProvider _time = new(new DateTimeOffset(2026, 10, 24, 12, 0, 0, TimeSpan.Zero));
 
-    private MediaService CreateService() => new(_provider, _db, _time, NullLogger<MediaService>.Instance);
+    private MediaService CreateService() => new(_provider, new FakeTmdbClient(), _db, _time, NullLogger<MediaService>.Instance);
 
     [Fact]
     public async Task Search_ReturnsSummariesAndPaging()

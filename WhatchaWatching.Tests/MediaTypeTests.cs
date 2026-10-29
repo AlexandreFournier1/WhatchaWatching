@@ -21,7 +21,7 @@ public class MediaTypeTests
 
     public MediaTypeTests()
     {
-        _media = new MediaService(_provider, _db, TimeProvider.System, NullLogger<MediaService>.Instance);
+        _media = new MediaService(_provider, new FakeTmdbClient(), _db, TimeProvider.System, NullLogger<MediaService>.Instance);
         _watchList = new WatchListService(_db, _media);
         _picker = new RandomPickerService(_db, new Random(42));
     }
@@ -46,20 +46,16 @@ public class MediaTypeTests
         await context.SaveChangesAsync();
     }
 
-    [Theory]
-    [InlineData(MediaType.Movie)]
-    [InlineData(MediaType.TVShow)]
-    public async Task Search_ForATypeWithoutProvider_Throws(MediaType type)
+    [Fact]
+    public async Task Search_ForATypeWithoutProvider_Throws()
     {
-        await Assert.ThrowsAsync<NotSupportedException>(() => _media.SearchAsync(type, "x", 1));
+        await Assert.ThrowsAsync<NotSupportedException>(() => _media.SearchAsync(MediaType.Manga, "x", 1));
     }
 
-    [Theory]
-    [InlineData(MediaType.Movie)]
-    [InlineData(MediaType.TVShow)]
-    public async Task Get_ForATypeWithoutProvider_Throws(MediaType type)
+    [Fact]
+    public async Task Get_ForATypeWithoutProvider_Throws()
     {
-        await Assert.ThrowsAsync<NotSupportedException>(() => _media.GetAsync(type, 1));
+        await Assert.ThrowsAsync<NotSupportedException>(() => _media.GetAsync(MediaType.Manga, 1));
     }
 
     [Fact]

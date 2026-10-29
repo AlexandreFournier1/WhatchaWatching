@@ -20,7 +20,7 @@ public class WatchListServiceTests
 
     public WatchListServiceTests()
     {
-        var animeService = new MediaService(_provider, _db, TimeProvider.System, NullLogger<MediaService>.Instance);
+        var animeService = new MediaService(_provider, new FakeTmdbClient(), _db, TimeProvider.System, NullLogger<MediaService>.Instance);
         _service = new WatchListService(_db, animeService);
     }
 

@@ -22,7 +22,7 @@ public class AdultContentTests
 
     public AdultContentTests()
     {
-        _anime = new MediaService(_provider, _db, TimeProvider.System, NullLogger<MediaService>.Instance);
+        _anime = new MediaService(_provider, new FakeTmdbClient(), _db, TimeProvider.System, NullLogger<MediaService>.Instance);
         _watchList = new WatchListService(_db, _anime);
         _settings = new UserSettingsService(_db);
 
@@ -78,7 +78,7 @@ public class AdultContentTests
     public async Task Search_KeepsAnAdultAnimeOutEvenIfTheProviderReturnsOne()
     {
         var careless = new StubAniListClient { Anime = AdultAnime(1) };
-        var service = new MediaService(careless, _db, TimeProvider.System, NullLogger<MediaService>.Instance);
+        var service = new MediaService(careless, new FakeTmdbClient(), _db, TimeProvider.System, NullLogger<MediaService>.Instance);
 
         var result = await service.SearchAsync(MediaType.Anime, "x", 1);
 
