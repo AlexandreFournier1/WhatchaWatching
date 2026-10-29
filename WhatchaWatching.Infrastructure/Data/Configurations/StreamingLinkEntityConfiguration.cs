@@ -22,6 +22,10 @@ public class StreamingLinkEntityConfiguration : IEntityTypeConfiguration<Streami
             .HasMaxLength(ConfigurationConstants.LARGE_SIZE)
             .IsRequired();
 
+        builder.Property(l => l.Region)
+            .HasMaxLength(CountryCatalog.CODE_LENGTH)
+            .IsRequired(false);
+
         // The links go away with their anime. The foreign key's index serves the lookup by anime.
         builder.HasOne(l => l.Media)
             .WithMany(m => m.StreamingLinks)

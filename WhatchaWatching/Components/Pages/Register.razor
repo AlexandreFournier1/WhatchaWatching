@@ -7,39 +7,40 @@
 @inject SignInManager<UserEntity> SignInManager
 @inject UserManager<UserEntity> UserManager
 @inject NavigationManager Navigation
+@inject ILocalizer L
 @inject IAccountEmailService AccountEmail
 
-<PageTitle>Create account - WhatchaWatching</PageTitle>
+<PageTitle>@L["Create account"] - WhatchaWatching</PageTitle>
 
 <section class="auth">
-    <h1>Create account</h1>
+    <h1>@L["Create account"]</h1>
 
     <EditForm Model="Input" method="post" OnValidSubmit="RegisterAsync" FormName="register">
         <DataAnnotationsValidator />
 
         <div class="field">
-            <label for="username">Username</label>
+            <label for="username">@L["Username"]</label>
             <InputText id="username" class="input" autocomplete="username" @bind-Value="Input.Username" />
-            <ValidationMessage For="() => Input.Username" />
+            <LocalizedValidationMessage For="() => Input.Username" />
         </div>
 
         <div class="field">
-            <label for="email">Email</label>
+            <label for="email">@L["Email"]</label>
             <InputText id="email" type="email" class="input" autocomplete="email" @bind-Value="Input.Email" />
-            <ValidationMessage For="() => Input.Email" />
+            <LocalizedValidationMessage For="() => Input.Email" />
         </div>
 
         <div class="field">
-            <label for="password">Password</label>
+            <label for="password">@L["Password"]</label>
             <InputText id="password" type="password" class="input" autocomplete="new-password" @bind-Value="Input.Password" />
-            <small class="muted">At least 8 characters, including a digit.</small>
-            <ValidationMessage For="() => Input.Password" />
+            <small class="muted">@L["At least 8 characters, including a digit."]</small>
+            <LocalizedValidationMessage For="() => Input.Password" />
         </div>
 
         <div class="field">
-            <label for="confirm">Confirm password</label>
+            <label for="confirm">@L["Confirm password"]</label>
             <InputText id="confirm" type="password" class="input" autocomplete="new-password" @bind-Value="Input.ConfirmPassword" />
-            <ValidationMessage For="() => Input.ConfirmPassword" />
+            <LocalizedValidationMessage For="() => Input.ConfirmPassword" />
         </div>
 
         @foreach (var message in errors)
@@ -47,10 +48,10 @@
             <p class="validation-message" role="alert">@message</p>
         }
 
-        <button type="submit" class="btn">Create account</button>
+        <button type="submit" class="btn">@L["Create account"]</button>
     </EditForm>
 
-    <p class="switch">Already registered? <a href="login@(ReturnQuery)">Log in</a></p>
+    <p class="switch">@L["Already registered?"] <a href="login@(ReturnQuery)">@L["Log in"]</a></p>
 </section>
 
 @code {

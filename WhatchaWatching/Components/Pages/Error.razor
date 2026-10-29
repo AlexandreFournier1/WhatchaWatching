@@ -1,20 +1,21 @@
 ﻿@page "/Error"
 @attribute [ExcludeFromInteractiveRouting]
 @using System.Diagnostics
+@inject ILocalizer L
 
-<PageTitle>Error - WhatchaWatching</PageTitle>
+<PageTitle>@L["Error"] - WhatchaWatching</PageTitle>
 
 <section class="status-page">
-    <p class="status-code">Oops</p>
-    <h1>Something went wrong</h1>
-    <p class="muted">An error occurred while processing your request.</p>
+    <p class="status-code">@L["Oops"]</p>
+    <h1>@L["Something went wrong"]</h1>
+    <p class="muted">@L["An error occurred while processing your request."]</p>
 
     @if (ShowRequestId)
     {
-        <p class="muted">Request ID: <code>@RequestId</code></p>
+        <p class="muted">@L["Request ID:"] <code>@RequestId</code></p>
     }
 
-    <a class="btn" href="">Back to home</a>
+    <a class="btn" href="">@L["Back to home"]</a>
 </section>
 
 @code{

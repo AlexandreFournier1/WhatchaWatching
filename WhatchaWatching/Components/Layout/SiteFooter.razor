@@ -1,32 +1,45 @@
 @using WhatchaWatching.Services
+@inject ILocalizer L
+@inject NavigationManager Navigation
 
 <footer class="footer">
     <div class="footer-inner">
         <div class="credits">
             <span class="name">WhatchaWatching</span>
-            <span>Made by Alexandre Fournier &middot; &copy; @DateTime.UtcNow.Year &middot; <a href="privacy">Privacy</a></span>
+            <span>@L["Made by"] Alexandre Fournier &middot; &copy; @DateTime.UtcNow.Year &middot; <a href="privacy">@L["Privacy"]</a></span>
+            <nav class="languages" aria-label="@L["Language"]">
+                <a href="@LanguageUrl("en")" lang="en" aria-current="@(L.Language == "en" ? "true" : null)" hreflang="en">English</a>
+                <a href="@LanguageUrl("fr")" lang="fr" aria-current="@(L.Language == "fr" ? "true" : null)" hreflang="fr">Français</a>
+            </nav>
         </div>
 
         <div class="data">
             <span>
-                Anime data from
+                @L["Anime data from"]
                 <a href="https://jikan.moe/" target="_blank" rel="noopener noreferrer">Jikan</a> (MyAnimeList)
-                and <a href="https://anilist.co/" target="_blank" rel="noopener noreferrer">AniList</a>
+                @L["and"] <a href="https://anilist.co/" target="_blank" rel="noopener noreferrer">AniList</a>
             </span>
             <span>
-                Movie and TV data from
+                @L["Movie and TV data from"]
                 <a href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer">TMDB</a>,
-                streaming availability by
+                @L["streaming availability by"]
                 <a href="https://www.justwatch.com/" target="_blank" rel="noopener noreferrer">JustWatch</a>
             </span>
             <a class="tmdb-logo" href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer">
                 <img src="tmdb-logo.png" alt="TMDB" width="62" height="28" loading="lazy" />
             </a>
+            @* The statement TMDB asks for is kept in English, as they word it. *@
             <span class="small-print">This product uses the TMDB API but is not endorsed or certified by TMDB.</span>
             @if (AppVersion.Display.Length > 0)
             {
-                <span class="version" title="Version of the site and commit it was built from">@AppVersion.Display</span>
+                <span class="version" title="@L["Version of the site and commit it was built from"]">@AppVersion.Display</span>
             }
         </div>
     </div>
 </footer>
+
+@code {
+    // Chooses the language, then comes back to the page the visitor is on.
+    private string LanguageUrl(string culture) =>
+        $"language?culture={culture}&returnUrl={Uri.EscapeDataString("/" + Navigation.ToBaseRelativePath(Navigation.Uri))}";
+}

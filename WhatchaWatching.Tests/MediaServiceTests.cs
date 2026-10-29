@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using WhatchaWatching.Application.Exceptions;
 using WhatchaWatching.Application.Services;
+using WhatchaWatching.Common.Constants;
 using WhatchaWatching.Common.Dtos;
 using WhatchaWatching.Common.Enum;
 using WhatchaWatching.Middleware;
@@ -77,7 +78,7 @@ public class MediaServiceTests
     [Fact]
     public async Task Search_WhenNoProviderAnswers_PagesTheStoredAnime()
     {
-        var animes = Enumerable.Range(1, 15).Select(i => FakeAnimeProvider.Anime(i, $"Show {i:00}")).ToArray();
+        var animes = Enumerable.Range(1, ExternalApiConstants.SEARCH_PAGE_SIZE + 3).Select(i => FakeAnimeProvider.Anime(i, $"Show {i:00}")).ToArray();
         _provider.With(animes);
         var service = CreateService();
         foreach (var anime in animes)

@@ -1,3 +1,4 @@
+using WhatchaWatching.Services.Localization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -26,6 +27,11 @@ public class AccountPageTests
         }
 
         public Task SetShowsAdultContentAsync(int userId, bool value, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task<string> GetCountryAsync(int userId, CancellationToken cancellationToken = default) => Task.FromResult("BE");
+
+        public Task SetCountryAsync(int userId, string? country, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
     }
 
@@ -84,6 +90,7 @@ public class AccountPageTests
         services.AddCascadingAuthenticationState();
         services.AddSingleton<AuthenticationStateProvider, SignedInProvider>();
         services.AddSingleton<NavigationManager, TestNavigationManager>();
+        services.AddSingleton<ILocalizer, Localizer>();
         services.AddSingleton<IUserSettingsService>(new SlowSettings(showsAdult));
         services.AddSingleton<ICurrentUser, SlowCurrentUser>();
         services.AddSingleton<IAccountService, NoAccounts>();

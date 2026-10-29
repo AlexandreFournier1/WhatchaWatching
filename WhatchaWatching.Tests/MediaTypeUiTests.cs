@@ -1,3 +1,4 @@
+using WhatchaWatching.Services.Localization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -34,6 +35,7 @@ public class MediaTypeUiTests
         services.AddCascadingAuthenticationState();
         services.AddSingleton<AuthenticationStateProvider, Anonymous>();
         services.AddSingleton<NavigationManager>(new AtAddress(address));
+        services.AddSingleton<ILocalizer, Localizer>();
 
         await using var provider = services.BuildServiceProvider();
         await using var renderer = new HtmlRenderer(provider, provider.GetRequiredService<ILoggerFactory>());
@@ -124,6 +126,31 @@ public class MediaTypeUiTests
         Assert.Equal("136 min", MediaDisplay.Duration(Summary(MediaType.Movie)));
         Assert.Equal("45 min / episode", MediaDisplay.Duration(Summary(MediaType.TVShow, minutes: 45)));
         Assert.Equal("Duration unknown", MediaDisplay.Duration(Summary(MediaType.Movie, minutes: null)));
+    }
+
+    [Fact]
+    public void CardMeta_GivesTheYearAndTheDurationThatAreKnown()
+    {
+        Assert.Equal("2020 · 136 min", MediaDisplay.CardMeta(Summary(MediaType.Movie)));
+        Assert.Equal("2020 · 45 min / episode", MediaDisplay.CardMeta(Summary(MediaType.TVShow, minutes: 45)));
+        Assert.Equal("2020", MediaDisplay.CardMeta(Summary(MediaType.Movie, minutes: null)));
+        Assert.Equal("24 min / episode", MediaDisplay.CardMeta(Summary(MediaType.Anime, minutes: 24) with { Year = null }));
+    }
+
+    [Fact]
+    public void CardMeta_IsLeftOutWhenNothingIsKnown_RatherThanSayingUnknown()
+    {
+        Assert.Null(MediaDisplay.CardMeta(Summary(MediaType.Movie, minutes: null) with { Year = null }));
+    }
+
+    [Fact]
+    public async Task ACardOfASearchResultWithoutDuration_HasNoUnknownLine()
+    {
+        var html = await RenderAsync<MediaCard>(
+            "http://localhost/", new() { ["Media"] = Summary(MediaType.Movie, minutes: null) with { Year = null } });
+
+        Assert.DoesNotContain("unknown", html);
+        Assert.DoesNotContain("class=\"meta\"", html);
     }
 
     [Fact]

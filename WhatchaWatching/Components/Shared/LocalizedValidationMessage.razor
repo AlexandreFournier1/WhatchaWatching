@@ -1,0 +1,49 @@
+@typeparam TValue
+@implements IDisposable
+@inject ILocalizer L
+
+@* Like ValidationMessage, but the message of the model (written in English) is shown in the language of the visit. *@
+@foreach (var message in CurrentEditContext.GetValidationMessages(fieldIdentifier))
+{
+    <div class="validation-message">@L[message]</div>
+}
+
+@code {
+    private EditContext? attachedTo;
+    private FieldIdentifier fieldIdentifier;
+
+    [CascadingParameter]
+    private EditContext CurrentEditContext { get; set; } = default!;
+
+    [Parameter]
+    public System.Linq.Expressions.Expression<Func<TValue>>? For { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (For is null)
+        {
+            throw new InvalidOperationException("LocalizedValidationMessage needs a value for For.");
+        }
+
+        fieldIdentifier = FieldIdentifier.Create(For);
+
+        if (!ReferenceEquals(attachedTo, CurrentEditContext))
+        {
+            Detach();
+            attachedTo = CurrentEditContext;
+            attachedTo.OnValidationStateChanged += OnValidationStateChanged;
+        }
+    }
+
+    private void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e) => StateHasChanged();
+
+    private void Detach()
+    {
+        if (attachedTo is not null)
+        {
+            attachedTo.OnValidationStateChanged -= OnValidationStateChanged;
+        }
+    }
+
+    public void Dispose() => Detach();
+}

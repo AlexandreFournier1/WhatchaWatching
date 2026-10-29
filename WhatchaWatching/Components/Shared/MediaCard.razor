@@ -1,3 +1,4 @@
+@inject ILocalizer L
 @using WhatchaWatching.Common.Dtos
 
 <article class="media-card @(Featured ? "featured" : "")">
@@ -10,8 +11,11 @@
         </a>
 
         <div class="info">
-            <h3><a href="@MediaRoutes.DetailUrl(Media.Type, Media.Id)">@Media.Title</a></h3>
-            <p class="meta">@MediaDisplay.Duration(Media)</p>
+            <h2><a href="@MediaRoutes.DetailUrl(Media.Type, Media.Id)">@Media.Title</a></h2>
+            @if (MediaDisplay.CardMeta(Media, L) is { } meta)
+            {
+                <p class="meta">@meta</p>
+            }
 
             @if (Media.IsAdult)
             {
@@ -20,7 +24,7 @@
 
             @if (Media.IsCustom)
             {
-                <span class="chip">Added by you</span>
+                <span class="chip">@L["Added by you"]</span>
             }
 
             @if (Featured && Media.Genres.Count > 0)
@@ -37,7 +41,7 @@
 
     @if (Featured)
     {
-        <p class="summary">@(Media.Synopsis ?? "No summary available.")</p>
+        <p class="summary">@(Media.Synopsis ?? L["No summary available."])</p>
     }
 
     @if (ChildContent is not null)

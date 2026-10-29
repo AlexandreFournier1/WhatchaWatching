@@ -4,5 +4,7 @@ public enum WatchListSort
 {
     RecentlyAdded,
     Title,
-    ShortestFirst
+    ShortestFirst,
+    BestRated,
+    Newest
 }

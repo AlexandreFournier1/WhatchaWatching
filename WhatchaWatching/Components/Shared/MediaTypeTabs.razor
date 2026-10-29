@@ -1,10 +1,11 @@
 @implements IDisposable
+@inject ILocalizer L
 
-<nav class="type-tabs" aria-label="Type of title">
+<nav class="type-tabs" aria-label="@L["Type of title"]">
     @foreach (var type in MediaRoutes.Types)
     {
         <a class="tab @(type == Current ? "active" : "")" href="@UrlFor(type)"
-           aria-current="@(type == Current ? "page" : null)">@MediaRoutes.Label(type)</a>
+           aria-current="@(type == Current ? "page" : null)">@L[MediaRoutes.Label(type)]</a>
     }
 </nav>
 

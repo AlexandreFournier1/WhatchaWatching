@@ -1,4 +1,4 @@
-<div class="filter">
+<div class="filter" @onkeydown="OnKeyDown">
     <button type="button" class="trigger @(open ? "open" : "")" aria-haspopup="listbox"
             aria-expanded="@(open ? "true" : "false")" @onclick="Toggle">
         <span>@TriggerText</span>
@@ -11,10 +11,10 @@
         <ul class="menu pop-in" role="listbox" aria-label="@Label" aria-multiselectable="@(Multiple ? "true" : "false")">
             @foreach (var option in Options)
             {
-                var isSelected = Selected.Contains(option);
-                <li>
+                var isSelected = Selected.Contains(option.Value);
+                <li role="presentation">
                     <button type="button" role="option" class="option" aria-selected="@(isSelected ? "true" : "false")"
-                            @onclick="() => Choose(option)">
+                            @onclick="() => Choose(option.Value)">
                         @if (Multiple)
                         {
                             <span class="checkbox @(isSelected ? "checked" : "")">
@@ -24,7 +24,7 @@
                                 }
                             </span>
                         }
-                        <span>@option</span>
+                        <span>@option.Label</span>
                     </button>
                 </li>
             }
@@ -39,7 +39,7 @@
     public string Label { get; set; } = string.Empty;
 
     [Parameter, EditorRequired]
-    public IReadOnlyList<string> Options { get; set; } = [];
+    public IReadOnlyList<FilterOption> Options { get; set; } = [];
 
     /// <summary>Several options can be selected (checkboxes) instead of a single one.</summary>
     [Parameter]
@@ -54,13 +54,21 @@
     private string TriggerText => Selected.Count switch
     {
         0 => Label,
-        1 => Selected.First(),
+        1 => Options.FirstOrDefault(o => o.Value == Selected.First())?.Label ?? Selected.First(),
         _ => $"{Label} ({Selected.Count})"
     };
 
     private void Toggle() => open = !open;
 
     private void Close() => open = false;
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (open && e.Key == "Escape")
+        {
+            Close();
+        }
+    }
 
     private async Task Choose(string option)
     {

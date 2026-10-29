@@ -3,18 +3,19 @@
 @inject IWatchListService WatchList
 @inject ICurrentUser CurrentUser
 @inject ILogger<MyList> Logger
+@inject ILocalizer L
 
-<PageTitle>My List - WhatchaWatching</PageTitle>
+<PageTitle>@L["My List"] - WhatchaWatching</PageTitle>
 
 <section class="page-section">
     <header class="page-header">
-        <h1>My List</h1>
+        <h1>@L["My List"]</h1>
         @if (!loading && !failed)
         {
-            <p class="muted fade-in">@items.Count @(IsFiltered ? "matching" : "to watch")</p>
+            <p class="muted fade-in">@(IsFiltered ? L.F("{0} matching", items.Count) : L.F("{0} to watch", items.Count))</p>
             @if (Type == MediaType.Anime)
             {
-                <p class="fade-in"><a href="anime/new">Add an anime by hand</a></p>
+                <p class="fade-in"><a href="anime/new">@L["Add an anime by hand"]</a></p>
             }
         }
     </header>
@@ -30,27 +31,33 @@
     }
     else if (failed)
     {
-        <EmptyState Title="Your list could not be loaded" Message="Try again in a moment.">
-            <button type="button" class="btn" @onclick="ReloadAsync">Try again</button>
+        <EmptyState Title="@L["Your list could not be loaded"]" Message="@L["Try again in a moment."]">
+            <button type="button" class="btn" @onclick="ReloadAsync">@L["Try again"]</button>
         </EmptyState>
     }
     else if (items.Count == 0 && !IsFiltered)
     {
-        <EmptyState Title="@($"No {MediaRoutes.Label(Type).ToLowerInvariant()} in your list")" Message="Search for something and add it to your list.">
-            <a class="btn" href="@MediaRoutes.SearchUrl(Type)">Find something to add</a>
+        <EmptyState Title="@NoneInList" Message="@L["Search for something and add it to your list."]">
+            <a class="btn" href="@MediaRoutes.SearchUrl(Type)">@L["Find something to add"]</a>
         </EmptyState>
     }
     else
     {
         <div class="filters">
-            <FilterDropdown Label="Genre" Multiple="true" Options="genreOptions" Selected="genres" SelectedChanged="OnGenresChanged" />
-            <FilterDropdown Label="Duration" Options="FilterOptions.DurationLabels" Selected="duration" SelectedChanged="OnDurationChanged" />
-            <FilterDropdown Label="Sort by" Options="FilterOptions.SortLabels" Selected="sort" SelectedChanged="OnSortChanged" />
+            <FilterDropdown Label="@L["Genre"]" Multiple="true" Options="FilterOptions.Plain(genreOptions)" Selected="genres" SelectedChanged="OnGenresChanged" />
+            @if (platformOptions.Count > 0)
+            {
+                <FilterDropdown Label="@L["Platform"]" Multiple="true" Options="FilterOptions.Plain(platformOptions)" Selected="platforms" SelectedChanged="OnPlatformsChanged" />
+            }
+            <FilterDropdown Label="@L["Duration"]" Options="FilterOptions.Localized(FilterOptions.DurationValues(Type), L)" Selected="duration" SelectedChanged="OnDurationChanged" />
+            <FilterDropdown Label="@L["Score"]" Options="FilterOptions.Localized(FilterOptions.ScoreValues, L)" Selected="score" SelectedChanged="OnScoreChanged" />
+            <FilterDropdown Label="@L["Released"]" Options="FilterOptions.Localized(FilterOptions.PeriodValues, L)" Selected="period" SelectedChanged="OnPeriodChanged" />
+            <FilterDropdown Label="@L["Sort by"]" Options="FilterOptions.Localized(FilterOptions.SortValues, L)" Selected="sort" SelectedChanged="OnSortChanged" />
         </div>
 
         @if (items.Count == 0)
         {
-            <EmptyState Title="No match" Message="Nothing in your list matches these filters." />
+            <EmptyState Title="@L["No match"]" Message="@L["Nothing in your list matches these filters."]" />
         }
         else
         {
@@ -58,16 +65,16 @@
                 @foreach (var anime in items)
                 {
                     <MediaCard Media="anime" @key="(anime.Type, anime.Id)">
-                        <button type="button" class="btn btn-danger btn-sm" title="@(anime.IsCustom ? "Remove and delete this anime" : "Remove from my list")"
+                        <button type="button" class="btn btn-danger btn-sm" title="@(anime.IsCustom ? L["Remove and delete this anime"] : L["Remove from my list"])"
                                 disabled="@removing.Contains(Key(anime))" aria-busy="@(removing.Contains(Key(anime)) ? "true" : "false")"
                                 @onclick="() => RemoveAsync(anime)">
                             @if (removing.Contains(Key(anime)))
                             {
-                                <span class="spinner" aria-hidden="true"></span><span>Removing...</span>
+                                <span class="spinner" aria-hidden="true"></span><span>@L["Removing..."]</span>
                             }
                             else
                             {
-                                <Icon Name="trash" Size="16" /><span>Remove</span>
+                                <Icon Name="trash" Size="16" /><span>@L["Remove"]</span>
                             }
                         </button>
                     </MediaCard>
@@ -88,11 +95,23 @@
     private int userId;
     private IReadOnlyList<MediaSummaryDto> items = [];
     private IReadOnlyList<string> genreOptions = [];
+    private IReadOnlyList<string> platformOptions = [];
+    private IReadOnlyCollection<string> platforms = [];
     private IReadOnlyCollection<string> genres = [];
     private IReadOnlyCollection<string> duration = [];
+    private IReadOnlyCollection<string> score = [];
+    private IReadOnlyCollection<string> period = [];
     private IReadOnlyCollection<string> sort = [];
 
-    private bool IsFiltered => genres.Count > 0 || duration.Count > 0;
+    // "None" in the language of the visit: the gender of the word changes in French, so each type has its own phrase.
+    private string NoneInList => Type switch
+    {
+        MediaType.Movie => L["No movies in your list"],
+        MediaType.TVShow => L["No TV series in your list"],
+        _ => L["No anime in your list"]
+    };
+
+    private bool IsFiltered => genres.Count > 0 || platforms.Count > 0 || duration.Count > 0 || score.Count > 0 || period.Count > 0;
 
     [SupplyParameterFromQuery(Name = "type")]
     private string? TypeSlug { get; set; }
@@ -100,8 +119,21 @@
     // Anime unless the address asks for movies or series (the type switch of the header sets it).
     private MediaType Type => MediaRoutes.FromSlug(TypeSlug) ?? MediaRoutes.DefaultType;
 
+    private MediaType? shownType;
+
     protected override async Task OnParametersSetAsync()
     {
+        // The genres and the lengths of another type mean something else: the choices start again.
+        if (shownType != Type)
+        {
+            shownType = Type;
+            genres = [];
+            platforms = [];
+            duration = [];
+            score = [];
+            period = [];
+        }
+
         if (RendererInfo.IsInteractive)
         {
             await ReloadAsync();
@@ -119,7 +151,9 @@
             genreOptions = await WatchList.GetGenresAsync(userId, Type);
             // A filter on a genre that left the list would hide everything.
             genres = genres.Where(genreOptions.Contains).ToList();
-            items = await WatchList.GetAsync(userId, FilterOptions.ToFilter(genres, duration) with { Type = Type }, FilterOptions.ToSort(sort));
+            platformOptions = await WatchList.GetPlatformsAsync(userId, Type);
+            platforms = platforms.Where(platformOptions.Contains).ToList();
+            items = await WatchList.GetAsync(userId, FilterOptions.ToFilter(Type, genres, duration, score, period, platforms), FilterOptions.ToSort(sort));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -136,6 +170,24 @@
     private async Task OnGenresChanged(IReadOnlyCollection<string> selected)
     {
         genres = selected;
+        await ReloadAsync();
+    }
+
+    private async Task OnPlatformsChanged(IReadOnlyCollection<string> selected)
+    {
+        platforms = selected;
+        await ReloadAsync();
+    }
+
+    private async Task OnScoreChanged(IReadOnlyCollection<string> selected)
+    {
+        score = selected;
+        await ReloadAsync();
+    }
+
+    private async Task OnPeriodChanged(IReadOnlyCollection<string> selected)
+    {
+        period = selected;
         await ReloadAsync();
     }
 

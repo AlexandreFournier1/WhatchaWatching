@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using WhatchaWatching.Services.Localization;
+using WhatchaWatching.Tests.TestSupport;
 using WhatchaWatching.Components.Layout;
 
 namespace WhatchaWatching.Tests;
@@ -12,6 +14,8 @@ public class SiteFooterTests
     {
         var services = new ServiceCollection();
         services.AddLogging();
+        services.AddSingleton<NavigationManager>(new StubNavigation());
+        services.AddSingleton<ILocalizer, Localizer>();
 
         await using var provider = services.BuildServiceProvider();
         await using var renderer = new HtmlRenderer(provider, provider.GetRequiredService<ILoggerFactory>());

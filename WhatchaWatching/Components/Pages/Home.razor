@@ -6,16 +6,17 @@
 @inject AdultFilterState AdultState
 @inject NavigationManager Navigation
 @inject ILogger<Home> Logger
+@inject ILocalizer L
 
 <PageTitle>WhatchaWatching</PageTitle>
 
 <section class="home">
-    <h1>Whatcha watching today ?</h1>
+    <h1>@L["Whatcha watching today ?"]</h1>
 
     <div class="actions">
-        <button type="button" class="btn" disabled="@loading" @onclick="Surprise">Surprise Me</button>
+        <button type="button" class="btn" disabled="@loading" @onclick="Surprise">@L["Surprise Me"]</button>
         <button type="button" class="btn" aria-expanded="@(showConditions ? "true" : "false")"
-                @onclick="ToggleConditions">Find me something like...</button>
+                @onclick="ToggleConditions">@L["Find me something like..."]</button>
     </div>
 
     <AdultSwitch Visible="profileAllowsAdult" Value="AdultState.Enabled" ValueChanged="OnAdultChanged" />
@@ -23,14 +24,19 @@
     @if (showConditions)
     {
         <div class="conditions fade-in">
-            <h2>What's your condition ?</h2>
+            <h2>@L["What's your condition ?"]</h2>
 
             <div class="filters">
-                <FilterDropdown Label="Genre" Multiple="true" Options="genreOptions" @bind-Selected="genres" />
-                <FilterDropdown Label="Duration" Options="FilterOptions.DurationLabels" @bind-Selected="duration" />
+                <FilterDropdown Label="@L["Genre"]" Multiple="true" Options="FilterOptions.Plain(genreOptions)" @bind-Selected="genres" />
+                @if (platformOptions.Count > 0)
+                {
+                    <FilterDropdown Label="@L["Platform"]" Multiple="true" Options="FilterOptions.Plain(platformOptions)" @bind-Selected="platforms" />
+                }
+                <FilterDropdown Label="@L["Duration"]" Options="FilterOptions.Localized(FilterOptions.DurationValues(Type), L)" @bind-Selected="duration" />
+                <FilterDropdown Label="@L["Score"]" Options="FilterOptions.Localized(FilterOptions.ScoreValues, L)" @bind-Selected="score" />
             </div>
 
-            <button type="button" class="btn" disabled="@loading" @onclick="PickWithConditions">Yeah that's it</button>
+            <button type="button" class="btn" disabled="@loading" @onclick="PickWithConditions">@L["Yeah that's it"]</button>
         </div>
     }
 
@@ -40,35 +46,35 @@
             @switch (state)
             {
                 case State.Loading:
-                    <h2 class="muted fade-in">Looking for something...</h2>
+                    <h2 class="muted fade-in">@L["Looking for something..."]</h2>
                     <MediaCardSkeleton Featured="true" />
                     break;
 
                 case State.NeedsLogin:
-                    <EmptyState Title="Log in to use your list" Message="The picker chooses among the titles of your list.">
-                        <a class="btn" href="@Navigation.GetLoginUrl()">Log in</a>
+                    <EmptyState Title="@L["Log in to use your list"]" Message="@L["The picker chooses among the titles of your list."]">
+                        <a class="btn" href="@Navigation.GetLoginUrl()">@L["Log in"]</a>
                     </EmptyState>
                     break;
 
                 case State.Failed:
-                    <EmptyState Title="Something went wrong" Message="Your list could not be read. Try again in a moment.">
-                        <button type="button" class="btn" @onclick="Pick">Try again</button>
+                    <EmptyState Title="@L["Something went wrong"]" Message="@L["Your list could not be read. Try again in a moment."]">
+                        <button type="button" class="btn" @onclick="Pick">@L["Try again"]</button>
                     </EmptyState>
                     break;
 
                 case State.Nothing:
-                    <EmptyState Title="Nothing to pick from"
-                                Message="Your list has nothing matching this. Add some titles, or change the conditions.">
-                        <a class="btn" href="@MediaRoutes.SearchUrl(Type)">Find something to add</a>
+                    <EmptyState Title="@L["Nothing to pick from"]"
+                                Message="@L["Your list has nothing matching this. Add some titles, or change the conditions."]">
+                        <a class="btn" href="@MediaRoutes.SearchUrl(Type)">@L["Find something to add"]</a>
                     </EmptyState>
                     break;
 
                 case State.Picked when pick is not null:
-                    <h2 class="fade-in">Today you will be watching this :</h2>
+                    <h2 class="fade-in">@L["Today you will be watching this :"]</h2>
 
                     <MediaCard Media="pick" Featured="true">
-                        <a class="btn btn-ghost" href="@MediaRoutes.DetailUrl(pick.Type, pick.Id)">View details</a>
-                        <button type="button" class="btn btn-ghost" @onclick="Pick">Pick another</button>
+                        <a class="btn btn-ghost" href="@MediaRoutes.DetailUrl(pick.Type, pick.Id)">@L["View details"]</a>
+                        <button type="button" class="btn btn-ghost" @onclick="Pick">@L["Pick another"]</button>
                     </MediaCard>
                     break;
             }
@@ -85,8 +91,11 @@
     private bool loading => state == State.Loading;
     private MediaSummaryDto? pick;
     private IReadOnlyList<string> genreOptions = [];
+    private IReadOnlyList<string> platformOptions = [];
+    private IReadOnlyCollection<string> platforms = [];
     private IReadOnlyCollection<string> genres = [];
     private IReadOnlyCollection<string> duration = [];
+    private IReadOnlyCollection<string> score = [];
 
     [SupplyParameterFromQuery(Name = "type")]
     private string? TypeSlug { get; set; }
@@ -105,7 +114,11 @@
             state = State.Idle;
             pick = null;
             genres = [];
+            duration = [];
+            score = [];
             genreOptions = [];
+            platformOptions = [];
+            platforms = [];
 
             if (showConditions)
             {
@@ -138,6 +151,8 @@
         showConditions = false;
         genres = [];
         duration = [];
+        score = [];
+        platforms = [];
         await Pick();
     }
 
@@ -162,6 +177,7 @@
             if (await CurrentUser.GetUserIdAsync() is { } userId)
             {
                 genreOptions = await WatchList.GetGenresAsync(userId, Type);
+                platformOptions = await WatchList.GetPlatformsAsync(userId, Type);
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -189,7 +205,7 @@
         try
         {
             // The switch can only hide adult titles: the service shows them only if the profile allows it too.
-            var filter = FilterOptions.ToFilter(genres, duration) with { Type = Type, IncludeAdult = AdultState.Enabled };
+            var filter = FilterOptions.ToFilter(Type, genres, duration, score, platforms: platforms) with { IncludeAdult = AdultState.Enabled };
             pick = await Picker.PickAsync(userId.Value, filter, pick is null ? null : new MediaKey(pick.Type, pick.Id));
             state = pick is null ? State.Nothing : State.Picked;
         }

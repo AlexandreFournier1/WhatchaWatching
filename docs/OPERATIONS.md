@@ -7,7 +7,7 @@ How the live site (AlwaysData) is looked after: settings to make in the AlwaysDa
 - **Redirect http to https.** The site answers on both. In the settings of the site, turn on the redirection to HTTPS. The app does not redirect by itself: it only knows it is served over https thanks to the headers of the proxy (`X-Forwarded-Proto`), and a redirect in the app would loop if they did not arrive.
 - **Environment variables of the site** (Web > Sites > the site > environment, one `NAME=value` per line):
   - `ConnectionStrings__DefaultConnection`: the database. Add `SslMode=Required` to the string. MySqlConnector (before 2.6.1) could send the password before checking the certificate when the mode was left at its default; the patched version is pinned, and `Required` makes sure the connection is encrypted.
-  - `Tmdb__AccessToken`: the TMDB read access token. Optional `Tmdb__WatchRegion` (default `FR`).
+  - `Tmdb__AccessToken`: the TMDB read access token. (The country of the streaming platforms is each user's own setting.)
   - `Email__Host`, `Email__Port` (587), `Email__UserName`, `Email__Password`, `Email__From` (and optionally `Email__FromName`): the mailbox the site sends from, see below.
 
 ## Email (confirmation and password reset)
@@ -40,6 +40,27 @@ A migration or a bug can damage the data, and `/apply-migrations` cannot undo wh
   ```
 
   The counts must be those of the live database and the last migration the latest applied one. Delete the test database afterwards. AlwaysData also keeps its own backups: check in the panel how long and how often, and do not rely on them alone.
+
+## Secret scan before commit and push
+
+A secret pushed to GitHub must be treated as leaked, even if the commit is deleted afterwards. Three checks run before it can happen, all through [gitleaks](https://github.com/gitleaks/gitleaks) with the rules of `.gitleaks.toml` (the default rules, plus connection string passwords, the TMDB token and the mailbox password):
+
+- `.githooks/pre-commit` scans the staged files, and refuses `appsettings.Production*.json`, `.env*` and `secrets.json` outright.
+- `.githooks/pre-push` scans the commits about to be pushed (a new branch is scanned against everything already on a remote).
+- The Claude Code hook `.claude/hooks/check-secrets.sh` (declared in `.claude/settings.json`) runs the same scan before Claude issues a `git commit` or `git push`. It also reacts to a command that only mentions these words.
+
+On a new clone:
+
+1. `winget install Gitleaks.Gitleaks`, then reopen the terminal (and the Claude app) so `gitleaks` is on the `PATH`. Without it, every commit and push is refused with a message saying so.
+2. `git config core.hooksPath .githooks` (git does not version this setting).
+
+If a hook blocks:
+
+- A real secret: remove it from the files. If it is already in a commit that was not pushed, rewrite that commit; if it was pushed, change the secret first (new password, new token), then clean the history.
+- A false positive: tighten the rule or add the exact path or pattern to the `[[allowlists]]` in `.gitleaks.toml`, and say why in its description. `--no-verify` is not an answer.
+- To scan the whole history: `gitleaks git --redact --config .gitleaks.toml .` (`--redact` keeps the secret out of the output).
+
+`git diff --staged .` fails in the OneDrive folder of this project ("failed to stat '.'"), and `gitleaks git --staged` runs exactly that, so `.githooks/scan-secrets.sh` scans the staged content through a temporary copy instead.
 
 ## After a deploy
 

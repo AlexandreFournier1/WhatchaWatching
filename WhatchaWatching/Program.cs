@@ -10,6 +10,7 @@ using WhatchaWatching.Infrastructure.Data;
 using WhatchaWatching.Infrastructure.Data.Entities;
 using WhatchaWatching.Services;
 using WhatchaWatching.Services.Email;
+using WhatchaWatching.Services.Localization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -69,6 +70,9 @@ builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuth
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 builder.Services.AddScoped<AdultFilterState>();
 
+builder.Services.AddScoped<ILocalizer, Localizer>();
+builder.Services.AddScoped<IdentityErrorDescriber, LocalizedIdentityErrorDescriber>();
+
 var app = builder.Build();
 
 // First, so that everything after it sees the scheme and address of the visitor, not the proxy's.
@@ -103,6 +107,13 @@ if (!app.Environment.IsDevelopment())
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
 
+// The cookie of the language switch first, then the browser's Accept-Language, then English. The circuit of a page
+// takes its culture from this too.
+app.UseRequestLocalization(options => options
+    .SetDefaultCulture(Localizer.ENGLISH)
+    .AddSupportedCultures(LanguageEndpoint.SupportedLanguages)
+    .AddSupportedUICultures(LanguageEndpoint.SupportedLanguages));
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
@@ -110,6 +121,8 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+app.MapGet(LanguageEndpoint.PATH, LanguageEndpoint.Choose);
 
 // Signing out changes the auth cookie, which a Blazor circuit cannot do: it is a plain form post.
 // The form field makes the endpoint validate the antiforgery token.

@@ -1,15 +1,18 @@
 @page "/anime/{Id:int}"
 @page "/movie/{Id:int}"
 @page "/tv/{Id:int}"
+@using WhatchaWatching.Common.Constants
 @inject IMediaService MediaService
+@inject IMediaExtrasService Extras
 @inject ICustomAnimeService CustomAnimes
 @inject IWatchListService WatchList
 @inject ICurrentUser CurrentUser
 @inject IUserSettingsService Settings
 @inject NavigationManager Navigation
 @inject ILogger<MediaDetail> Logger
+@inject ILocalizer L
 
-<PageTitle>@(media?.Title ?? MediaRoutes.Badge(Type)) - WhatchaWatching</PageTitle>
+<PageTitle>@(media?.Title ?? L[MediaRoutes.Badge(Type)]) - WhatchaWatching</PageTitle>
 
 <section class="page-section">
     @if (loading)
@@ -27,16 +30,20 @@
             </div>
         </div>
     }
+    else if (failed && notConfigured)
+    {
+        <EmptyState Title="@L["Not available yet"]" Message="@L["This site cannot reach the movie and TV series data yet. Anime still work."]" />
+    }
     else if (failed)
     {
-        <EmptyState Title="@($"This {MediaRoutes.Singular(Type)} could not be loaded")" Message="The service did not answer. Try again in a moment.">
-            <button type="button" class="btn" @onclick="LoadAsync">Try again</button>
+        <EmptyState Title="@NotLoadedTitle" Message="@L["The service did not answer. Try again in a moment."]">
+            <button type="button" class="btn" @onclick="LoadAsync">@L["Try again"]</button>
         </EmptyState>
     }
     else if (media is null)
     {
-        <EmptyState Title="@($"{MediaRoutes.Badge(Type)} not found")" Message="This title does not exist or is not available.">
-            <a class="btn" href="@MediaRoutes.SearchUrl(Type)">Back to search</a>
+        <EmptyState Title="@NotFoundTitle" Message="@L["This title does not exist or is not available."]">
+            <a class="btn" href="@MediaRoutes.SearchUrl(Type)">@L["Back to search"]</a>
         </EmptyState>
     }
     else
@@ -57,18 +64,18 @@
                     {
                         <span>@year</span>
                     }
-                    @if (MediaDisplay.Episodes(media) is { } episodes)
+                    @if (MediaDisplay.Episodes(media, L) is { } episodes)
                     {
                         <span>@episodes</span>
                     }
-                    <span>@MediaDisplay.Duration(media)</span>
-                    @if (MediaDisplay.Status(media) is { } status)
+                    <span>@MediaDisplay.Duration(media, L)</span>
+                    @if (MediaDisplay.Status(media, L) is { } status)
                     {
                         <span>@status</span>
                     }
                     @if (media.Score is { } score)
                     {
-                        <span class="score" title="@MediaDisplay.ScoreSource(media)">&#9733; @score.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)</span>
+                        <span class="score" title="@MediaDisplay.ScoreSource(media, L)">&#9733; @score.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)</span>
                     }
                 </p>
 
@@ -83,21 +90,21 @@
                     }
                 </div>
 
-                <p class="synopsis">@(media.Synopsis ?? "No summary available.")</p>
+                <p class="synopsis">@(media.Synopsis ?? L["No summary available."])</p>
 
                 @if (media.IsCustom)
                 {
-                    <p class="notice">You added this anime by hand. Only you can see it.</p>
+                    <p class="notice">@L["You added this anime by hand. Only you can see it."]</p>
                 }
                 else
                 {
                     <section class="watch" aria-labelledby="watch-title">
-                        <h2 id="watch-title">Where to watch</h2>
+                        <h2 id="watch-title">@L["Where to watch"]</h2>
 
-                        @if (media.StreamingLinks.Count > 0)
+                        @if (VisibleLinks.Count > 0)
                         {
                             <ul class="watch-links">
-                                @foreach (var link in media.StreamingLinks)
+                                @foreach (var link in VisibleLinks)
                                 {
                                     <li>
                                         <a class="btn btn-ghost btn-sm" href="@link.Url" target="_blank" rel="noopener noreferrer">@link.Site</a>
@@ -105,16 +112,23 @@
                                 }
                             </ul>
                             <p class="muted small">
-                                Availability depends on your country.
+                                @if (media.Type == MediaType.Anime)
+                                {
+                                    <span>@L["Availability depends on your country."]</span>
+                                }
+                                else
+                                {
+                                    <span>@L.F("Platforms for {0}.", L[CountryCatalog.NameOf(region)]) <a href="account">@L["Change the country"]</a>.</span>
+                                }
                                 @if (media.Type != MediaType.Anime)
                                 {
-                                    <span>Streaming data by <a href="https://www.justwatch.com/" target="_blank" rel="noopener noreferrer">JustWatch</a>, through TMDB.</span>
+                                    <span>@L["Streaming data by"] <a href="https://www.justwatch.com/" target="_blank" rel="noopener noreferrer">JustWatch</a>, @L["through TMDB."]</span>
                                 }
                             </p>
                         }
                         else
                         {
-                            <p class="muted">No streaming platform is known for this media.</p>
+                            <p class="muted">@(media.Type == MediaType.Anime ? L["No streaming platform is known for this anime."] : L.F("No streaming platform is known for this title in {0}.", L[CountryCatalog.NameOf(region)]))</p>
                         }
                     </section>
                 }
@@ -122,7 +136,7 @@
                 <div class="actions">
                     @if (userId is null)
                     {
-                        <a class="btn" href="@Navigation.GetLoginUrl()">Log in to add to my list</a>
+                        <a class="btn" href="@Navigation.GetLoginUrl()">@L["Log in to add to my list"]</a>
                     }
                     else if (media.IsCustom)
                     {
@@ -132,19 +146,19 @@
                             <button type="button" class="btn btn-danger" disabled="@busy" aria-busy="@(busy ? "true" : "false")" @onclick="ToggleAsync">
                                 @if (busy)
                                 {
-                                    <span class="spinner" aria-hidden="true"></span><span>Deleting...</span>
+                                    <span class="spinner" aria-hidden="true"></span><span>@L["Deleting..."]</span>
                                 }
                                 else
                                 {
-                                    <Icon Name="trash" Size="16" /><span>Yes, delete it for good</span>
+                                    <Icon Name="trash" Size="16" /><span>@L["Yes, delete it for good"]</span>
                                 }
                             </button>
-                            <button type="button" class="btn btn-ghost" @onclick="() => confirmingDelete = false">Keep it</button>
+                            <button type="button" class="btn btn-ghost" @onclick="() => confirmingDelete = false">@L["Keep it"]</button>
                         }
                         else
                         {
                             <button type="button" class="btn btn-danger" @onclick="() => confirmingDelete = true">
-                                <Icon Name="trash" Size="16" /> Delete this anime
+                                <Icon Name="trash" Size="16" /> @L["Delete this anime"]
                             </button>
                         }
                     }
@@ -153,11 +167,11 @@
                         <button type="button" class="btn btn-danger" disabled="@busy" aria-busy="@(busy ? "true" : "false")" @onclick="ToggleAsync">
                             @if (busy)
                             {
-                                <span class="spinner" aria-hidden="true"></span><span>Removing...</span>
+                                <span class="spinner" aria-hidden="true"></span><span>@L["Removing..."]</span>
                             }
                             else
                             {
-                                <Icon Name="trash" Size="16" /><span>Remove from my list</span>
+                                <Icon Name="trash" Size="16" /><span>@L["Remove from my list"]</span>
                             }
                         </button>
                     }
@@ -166,23 +180,98 @@
                         <button type="button" class="btn" disabled="@busy" aria-busy="@(busy ? "true" : "false")" @onclick="ToggleAsync">
                             @if (busy)
                             {
-                                <span class="spinner" aria-hidden="true"></span><span>Adding...</span>
+                                <span class="spinner" aria-hidden="true"></span><span>@L["Adding..."]</span>
                             }
                             else
                             {
-                                <Icon Name="plus" Size="16" /><span>Add to my list</span>
+                                <Icon Name="plus" Size="16" /><span>@L["Add to my list"]</span>
                             }
                         </button>
                     }
-                    <a class="btn btn-ghost" href="my-list">My List</a>
+                    <a class="btn btn-ghost" href="my-list">@L["My List"]</a>
                 </div>
 
                 @if (actionFailed)
                 {
-                    <p class="validation-message" role="alert">That change could not be saved. Try again in a moment.</p>
+                    <p class="validation-message" role="alert">@L["That change could not be saved. Try again in a moment."]</p>
                 }
             </div>
         </article>
+
+        @if (extras is { IsEmpty: false })
+        {
+            <div class="extras fade-in">
+                @if (extras.Trailer is { } trailer)
+                {
+                    <p><a class="btn" href="@trailer.Url" target="_blank" rel="noopener noreferrer">@L["Watch the trailer"]</a></p>
+                }
+
+                @if (extras.Seasons.Count > 0)
+                {
+                    <section aria-labelledby="seasons-title">
+                        <h2 id="seasons-title">@L["Seasons"]</h2>
+                        <ul class="seasons">
+                            @foreach (var season in extras.Seasons)
+                            {
+                                <li>
+                                    <span class="season-name">@season.Name</span>
+                                    <span class="muted">
+                                        @(season.EpisodeCount is { } count ? L.F(count == 1 ? "{0} episode" : "{0} episodes", count) : L["Episodes unknown"])@(season.Year is { } seasonYear ? $" 00b7 {seasonYear}" : string.Empty)
+                                    </span>
+                                </li>
+                            }
+                        </ul>
+                    </section>
+                }
+
+                @if (extras.Cast.Count > 0)
+                {
+                    <section aria-labelledby="cast-title">
+                        <h2 id="cast-title">@L["Cast"]</h2>
+                        <ul class="cast">
+                            @foreach (var member in extras.Cast)
+                            {
+                                <li>
+                                    <span class="photo">
+                                        @if (member.PhotoUrl is not null)
+                                        {
+                                            <img src="@member.PhotoUrl" alt="" loading="lazy" />
+                                        }
+                                    </span>
+                                    <span class="actor">@member.Name</span>
+                                    @if (member.Character is not null)
+                                    {
+                                        <span class="muted small">@member.Character</span>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    </section>
+                }
+
+                @if (extras.Similar.Count > 0)
+                {
+                    <section aria-labelledby="similar-title">
+                        <h2 id="similar-title">@L["Similar titles"]</h2>
+                        <ul class="similar">
+                            @foreach (var other in extras.Similar)
+                            {
+                                <li>
+                                    <a href="@MediaRoutes.DetailUrl(other.Type, other.ExternalId)">
+                                        <img src="@other.ImageUrl" alt="" loading="lazy" />
+                                        <span class="similar-title">@other.Title</span>
+                                        @if (other.Year is { } otherYear)
+                                        {
+                                            <span class="muted small">@otherYear</span>
+                                        }
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    </section>
+                }
+            </div>
+        }
     }
 </section>
 
@@ -191,6 +280,28 @@
     private int? userId;
     private bool listed;
     private bool failed;
+    private bool notConfigured;
+    private string region = CountryCatalog.DEFAULT_CODE;
+
+    // One phrase per type: the article and the gender of the word change in French.
+    private string NotLoadedTitle => Type switch
+    {
+        MediaType.Movie => L["This movie could not be loaded"],
+        MediaType.TVShow => L["This series could not be loaded"],
+        _ => L["This anime could not be loaded"]
+    };
+
+    private string NotFoundTitle => Type switch
+    {
+        MediaType.Movie => L["Movie not found"],
+        MediaType.TVShow => L["TV series not found"],
+        _ => L["Anime not found"]
+    };
+    private MediaExtrasDto? extras;
+
+    // The offers of the country of the viewer; an offer without a country (an anime) counts everywhere.
+    private IReadOnlyList<StreamingLinkDto> VisibleLinks =>
+        media?.StreamingLinks.Where(l => l.Region is null || l.Region == region).ToList() ?? [];
     private bool actionFailed;
     private bool confirmingDelete;
     private bool busy;
@@ -217,12 +328,16 @@
     {
         loading = true;
         failed = false;
+        extras = null;
+        var includeAdult = false;
+        notConfigured = false;
         actionFailed = false;
 
         try
         {
             userId = await CurrentUser.GetUserIdAsync();
-            var includeAdult = userId is { } viewer && await Settings.ShowsAdultContentAsync(viewer);
+            includeAdult = userId is { } viewer && await Settings.ShowsAdultContentAsync(viewer);
+            region = userId is { } who ? await Settings.GetCountryAsync(who) : CountryCatalog.DEFAULT_CODE;
 
             if (Id <= 0)
             {
@@ -237,9 +352,10 @@
                     && (await WatchList.GetListedIdsAsync(id, Type, [Id])).Contains(Id);
             }
         }
-        catch (MediaProviderUnavailableException)
+        catch (MediaProviderUnavailableException ex)
         {
             failed = true;
+            notConfigured = ex.NotConfigured;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -249,6 +365,33 @@
         finally
         {
             loading = false;
+        }
+
+        // The page is complete without them: they come in when they arrive, and never delay it.
+        if (!failed && media is { IsCustom: false } && Id > 0 && Type != MediaType.Anime)
+        {
+            _ = LoadExtrasAsync(Type, Id, includeAdult);
+        }
+    }
+
+    private async Task LoadExtrasAsync(MediaType type, int id, bool includeAdult)
+    {
+        var loaded = await Extras.GetAsync(type, id, includeAdult);
+
+        // The page may have moved on to another title while this was loading.
+        if (type != Type || id != Id)
+        {
+            return;
+        }
+
+        extras = loaded;
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException)
+        {
+            // The visitor left the page.
         }
     }
 

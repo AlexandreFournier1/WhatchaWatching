@@ -63,7 +63,6 @@ public class DependencyInjectionTests
 
         Assert.IsType<TmdbClient>(provider.GetRequiredService<ITmdbClient>());
         Assert.False(provider.GetRequiredService<TmdbOptions>().IsConfigured);
-        Assert.Equal(ExternalApiConstants.TMDB_DEFAULT_WATCH_REGION, provider.GetRequiredService<TmdbOptions>().WatchRegion);
     }
 
     [Fact]

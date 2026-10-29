@@ -305,6 +305,10 @@ namespace WhatchaWatching.Infrastructure.Migrations
                     b.Property<int>("MediaId")
                         .HasColumnType("int");
 
+                    b.Property<string>("Region")
+                        .HasMaxLength(2)
+                        .HasColumnType("varchar(2)");
+
                     b.Property<string>("Site")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -336,6 +340,10 @@ namespace WhatchaWatching.Infrastructure.Migrations
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("longtext");
+
+                    b.Property<string>("Country")
+                        .HasMaxLength(2)
+                        .HasColumnType("varchar(2)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");

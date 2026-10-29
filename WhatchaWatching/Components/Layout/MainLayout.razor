@@ -1,9 +1,12 @@
 ﻿@inherits LayoutComponentBase
+@inject ILocalizer L
+
+<a class="skip-link" href="#main">@L["Skip to content"]</a>
 
 <div class="shell">
     <NavMenu />
 
-    <main class="shell-content">
+    <main id="main" class="shell-content" tabindex="-1">
         @Body
     </main>
 
@@ -11,7 +14,7 @@
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
+    @L["An unhandled error has occurred."]
+    <a href="." class="reload">@L["Reload"]</a>
     <span class="dismiss">X</span>
 </div>

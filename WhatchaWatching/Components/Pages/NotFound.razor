@@ -1,11 +1,12 @@
 ﻿@page "/not-found"
 @layout MainLayout
+@inject ILocalizer L
 
-<PageTitle>Not found - WhatchaWatching</PageTitle>
+<PageTitle>@L["Not found"] - WhatchaWatching</PageTitle>
 
 <section class="status-page">
     <p class="status-code">404</p>
-    <h1>Nothing to watch here</h1>
-    <p class="muted">Sorry, the page you are looking for does not exist.</p>
-    <a class="btn" href="">Back to home</a>
+    <h1>@L["Nothing to watch here"]</h1>
+    <p class="muted">@L["Sorry, the page you are looking for does not exist."]</p>
+    <a class="btn" href="">@L["Back to home"]</a>
 </section>

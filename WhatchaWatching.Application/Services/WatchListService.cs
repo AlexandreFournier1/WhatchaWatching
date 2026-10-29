@@ -23,6 +23,8 @@ public class WatchListService(
         var showAdult = await UserSettingsService.ShowsAdultContentAsync(context, userId, cancellationToken)
             && (filter?.IncludeAdult ?? true);
 
+        filter = await WithRegionAsync(context, userId, filter, cancellationToken);
+
         var items = await context.WatchListItems
             .AsNoTracking()
             .ForUser(userId)
@@ -35,6 +37,39 @@ public class WatchListService(
             .ToListAsync(cancellationToken);
 
         return items.Select(i => MediaMapper.ToSummary(i.Media)).ToList();
+    }
+
+    /// <summary>The filter with the country of the user, which the offers of a platform depend on.</summary>
+    internal static async Task<WatchListFilterDto?> WithRegionAsync(
+        ApplicationDbContext context, int userId, WatchListFilterDto? filter, CancellationToken cancellationToken) =>
+        filter is { Platforms.Count: > 0 }
+            ? filter with { Region = await UserSettingsService.CountryAsync(context, userId, cancellationToken) }
+            : filter;
+
+    public async Task<IReadOnlyList<string>> GetPlatformsAsync(
+        int userId, MediaType? type = null, CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        var showAdult = await UserSettingsService.ShowsAdultContentAsync(context, userId, cancellationToken);
+        var region = await UserSettingsService.CountryAsync(context, userId, cancellationToken);
+
+        var items = context.WatchListItems
+            .AsNoTracking()
+            .ForUser(userId)
+            .ApplyAdultContent(showAdult);
+        if (type is { } only)
+        {
+            items = items.Where(i => i.Media.Type == only);
+        }
+
+        return await items
+            .SelectMany(i => i.Media.StreamingLinks)
+            .Where(l => l.Region == null || l.Region == region)
+            .Select(l => l.Site)
+            .Distinct()
+            .OrderBy(site => site)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<string>> GetGenresAsync(

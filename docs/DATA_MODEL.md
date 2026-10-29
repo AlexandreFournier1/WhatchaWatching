@@ -19,6 +19,7 @@ erDiagram
         string UserName UK "Identity"
         string Email UK "Identity"
         string PasswordHash "Identity"
+        string Country "streaming country, null = FR"
         datetime CreatedAt
         datetime UpdatedAt
     }
@@ -53,6 +54,7 @@ erDiagram
         int Id PK
         int MediaId FK
         string Site
+        string Region "country, null for anime"
         string Url
     }
     MEDIA_GENRE {
@@ -125,6 +127,7 @@ A streaming platform where a media can be watched legally (Crunchyroll, Netflix.
 | Id | int | no | PK |
 | MediaId | int | no | FK → Media, indexed. |
 | Site | string(64) | no | Platform name. |
+| Region | string(2) | yes | ISO country the offer is for (movies and TV series, from the watch providers of TMDB). Null for anime, whose links do not depend on a country. |
 | Url | string(512) | no | Only http and https addresses are stored. |
 
 ### User
@@ -135,6 +138,7 @@ A streaming platform where a media can be watched legally (Crunchyroll, Netflix.
 |---|---|---|---|
 | CreatedAt / UpdatedAt | datetime (UTC) | no | Set in `SaveChangesAsync`. |
 | ShowAdultContent | bool | no | Default false. The user chose to see adult anime (Account page, with a confirmation of being 18 or older). |
+| Country | string(2) | yes | ISO code of the country whose streaming platforms are shown (one of `CountryCatalog`; Account page). Null means the default, `FR`. |
 | WatchListItems | collection | | Navigation to the user's watchlist. |
 
 Indexes: unique `UserNameIndex` on `NormalizedUserName` (Identity default); unique `EmailIndex` on `NormalizedEmail` (Identity creates it non-unique, so the project makes it unique).
@@ -260,3 +264,4 @@ The connection string lives in the web project's user-secrets (`ConnectionString
 - `AddCustomAnimeOwner` (`20261025112036`) adds the nullable column `Media.CreatedByUserId`, its index and its foreign key to `Users`. Nothing existing is changed or deleted: every stored anime keeps a null owner, that is, stays in the shared catalog. Applied to AlwaysData (found already applied on 2026-10-29; the exact date was not recorded).
 - `AddAdultContentSetting` (`20261025112850`) adds `Users.ShowAdultContent` and `Media.IsAdult`, both `false` for every existing row, and marks every stored `Media` as never synchronized so each anime fetches its data again, with the adult flag, the next time it is opened. Nothing is deleted. Applied to AlwaysData (found already applied on 2026-10-29; the exact date was not recorded).
 - `AddGenreSource` (`20261029093851`) adds `Genres.Source` (every existing genre becomes `MyAnimeList`), drops the unique indexes on `ExternalId` and on `Name`, and adds the unique index `(Source, ExternalId)`. TMDB's genre ids overlap MyAnimeList's (14 is Horror on one and Fantasy on the other), so a movie could not be stored before. Nothing is deleted. Applied to AlwaysData on 2026-10-29, before the code that uses it was deployed.
+- `AddCountryAndRegionalLinks` (`20261029150151`) adds `Users.Country` (null) and `StreamingLinks.Region`, and sets `Region = 'FR'` on the links of every stored movie and TV series (they were the ones of the single country the site used to list). Nothing is deleted. **Not applied to AlwaysData yet**: apply it (`/apply-migrations`) before deploying the code that uses it.

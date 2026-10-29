@@ -41,3 +41,23 @@
 .watch h2 { font-size: 1.1rem; font-weight: 500; }
 .watch-links { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem; }
 .small { font-size: .85rem; }
+
+/* What comes after the title itself: the trailer, the seasons, the cast and similar titles. */
+.extras { display: grid; gap: 2rem; margin-top: 2.5rem; }
+.extras section { display: grid; gap: .75rem; }
+.extras h2 { font-size: 1.25rem; font-weight: 500; }
+.extras ul { list-style: none; margin: 0; padding: 0; }
+
+.seasons { display: grid; gap: .4rem; max-width: 36rem; }
+.seasons li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .25rem 1rem; padding: .5rem .85rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+
+.cast, .similar { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 1rem; }
+.cast li, .similar a { display: grid; gap: .25rem; align-content: start; min-width: 0; }
+.cast .actor, .similar-title { font-size: .9rem; overflow-wrap: anywhere; }
+.cast .actor { color: var(--text); }
+.similar a { color: var(--text); }
+.similar a:hover .similar-title { color: var(--accent); }
+
+.photo, .similar img { aspect-ratio: 2 / 3; border-radius: var(--radius-md); background: var(--surface-hover); overflow: hidden; display: block; width: 100%; }
+.photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.similar img { object-fit: cover; }

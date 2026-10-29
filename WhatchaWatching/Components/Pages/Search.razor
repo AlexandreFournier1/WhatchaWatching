@@ -6,15 +6,16 @@
 @inject AdultFilterState AdultState
 @inject NavigationManager Navigation
 @inject ILogger<Search> Logger
+@inject ILocalizer L
 
-<PageTitle>Search - WhatchaWatching</PageTitle>
+<PageTitle>@L["Search"] - WhatchaWatching</PageTitle>
 
 <section class="page-section">
     <header class="page-header">
-        <h1>Search</h1>
+        <h1>@L["Search"]</h1>
         @if (!string.IsNullOrWhiteSpace(Query) && !loading && !failed)
         {
-            <p class="muted fade-in">@result.TotalItems result(s) for "@Query"</p>
+            <p class="muted fade-in">@L.F("{0} result(s) for \"{1}\"", result.TotalItems, Query)</p>
         }
 
         <AdultSwitch Visible="profileAllowsAdult" Value="AdultState.Enabled" ValueChanged="OnAdultChanged" />
@@ -29,26 +30,30 @@
             }
         </div>
     }
+    else if (failed && notConfigured)
+    {
+        <EmptyState Title="@L["Not available yet"]" Message="@L["This site cannot reach the movie and TV series data yet. Anime still work."]" />
+    }
     else if (failed)
     {
-        <EmptyState Title="The search is not available" Message="@($"The {(Type == MediaType.Anime ? "anime" : "movie and series")} service did not answer. Try again in a moment.")">
-            <button type="button" class="btn" @onclick="LoadAsync">Try again</button>
+        <EmptyState Title="@L["The search is not available"]" Message="@(Type == MediaType.Anime ? L["The anime service did not answer. Try again in a moment."] : L["The movie and series service did not answer. Try again in a moment."])">
+            <button type="button" class="btn" @onclick="LoadAsync">@L["Try again"]</button>
         </EmptyState>
     }
     else if (string.IsNullOrWhiteSpace(Query))
     {
-        <EmptyState Title="@($"Search for {Article} {MediaRoutes.Singular(Type)}")" Message="Type a title in the search bar at the top of the page." />
+        <EmptyState Title="@SearchPrompt" Message="@L["Type a title in the search bar at the top of the page."]" />
     }
     else if (result.Items.Count == 0)
     {
-        <EmptyState Title="No results" Message="Try another title." />
+        <EmptyState Title="@L["No results"]" Message="@L["Try another title."]" />
     }
     else
     {
         @if (localOnly)
         {
             <p class="notice fade-in" role="status">
-                The @(Type == MediaType.Anime ? "anime" : "movie and series") service is not answering. These are only the titles already saved on this site: the list may be incomplete.
+                @(Type == MediaType.Anime ? L["The anime service is not answering. These are only the titles already saved on this site: the list may be incomplete."] : L["The movie and series service is not answering. These are only the titles already saved on this site: the list may be incomplete."])
             </p>
         }
 
@@ -58,20 +63,20 @@
                 <MediaCard Media="anime" @key="anime.Id">
                     @if (userId is null)
                     {
-                        <a class="btn btn-sm" href="@Navigation.GetLoginUrl()">Log in to add</a>
+                        <a class="btn btn-sm" href="@Navigation.GetLoginUrl()">@L["Log in to add"]</a>
                     }
                     else if (listed.Contains(anime.Id))
                     {
-                        <button type="button" class="btn btn-ghost btn-sm" title="Remove from my list"
+                        <button type="button" class="btn btn-ghost btn-sm" title="@L["Remove from my list"]"
                                 disabled="@pending.Contains(anime.Id)" aria-busy="@(pending.Contains(anime.Id) ? "true" : "false")"
                                 @onclick="() => ToggleAsync(anime.Id)">
                             @if (pending.Contains(anime.Id))
                             {
-                                <span class="spinner" aria-hidden="true"></span><span>Removing...</span>
+                                <span class="spinner" aria-hidden="true"></span><span>@L["Removing..."]</span>
                             }
                             else
                             {
-                                <Icon Name="check" Size="16" /><span>In my list</span>
+                                <Icon Name="check" Size="16" /><span>@L["In my list"]</span>
                             }
                         </button>
                     }
@@ -82,11 +87,11 @@
                                 @onclick="() => ToggleAsync(anime.Id)">
                             @if (pending.Contains(anime.Id))
                             {
-                                <span class="spinner" aria-hidden="true"></span><span>Adding...</span>
+                                <span class="spinner" aria-hidden="true"></span><span>@L["Adding..."]</span>
                             }
                             else
                             {
-                                <Icon Name="plus" Size="16" /><span>Add to my list</span>
+                                <Icon Name="plus" Size="16" /><span>@L["Add to my list"]</span>
                             }
                         </button>
                     }
@@ -96,7 +101,7 @@
 
         @if (actionFailed)
         {
-            <p class="validation-message" role="alert">That change could not be saved. Try again in a moment.</p>
+            <p class="validation-message" role="alert">@L["That change could not be saved. Try again in a moment."]</p>
         }
 
         <Pagination Page="result.Page" TotalPages="result.TotalPages" PageChanged="GoToPage" />
@@ -104,7 +109,7 @@
 
     @if (!loading && !string.IsNullOrWhiteSpace(Query) && Type == MediaType.Anime)
     {
-        <p class="manual-link muted">Still not there? <a href="anime/new">Add it by hand</a>.</p>
+        <p class="manual-link muted">@L["Still not there?"] <a href="anime/new">@L["Add it by hand"]</a>.</p>
     }
 </section>
 
@@ -114,6 +119,7 @@
     // The skeleton is part of the prerendered HTML; the interactive pass then loads for real.
     private bool loading = true;
     private bool failed;
+    private bool notConfigured;
     private bool actionFailed;
     private bool localOnly;
     private bool profileAllowsAdult;
@@ -136,7 +142,13 @@
     // Anime unless the address asks for movies or series.
     private MediaType Type => MediaRoutes.FromSlug(TypeSlug) ?? MediaType.Anime;
 
-    private string Article => Type == MediaType.Anime ? "an" : "a";
+    // One phrase per type: the article and the gender of the word change in French.
+    private string SearchPrompt => Type switch
+    {
+        MediaType.Movie => L["Search for a movie"],
+        MediaType.TVShow => L["Search for a series"],
+        _ => L["Search for an anime"]
+    };
 
     protected override async Task OnParametersSetAsync()
     {
@@ -151,6 +163,7 @@
     {
         loading = true;
         failed = false;
+        notConfigured = false;
         actionFailed = false;
         localOnly = false;
 
@@ -169,9 +182,10 @@
                 ? (await WatchList.GetListedIdsAsync(id, Type, result.Items.Select(a => a.Id).ToList())).ToHashSet()
                 : [];
         }
-        catch (MediaProviderUnavailableException)
+        catch (MediaProviderUnavailableException ex)
         {
             failed = true;
+            notConfigured = ex.NotConfigured;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

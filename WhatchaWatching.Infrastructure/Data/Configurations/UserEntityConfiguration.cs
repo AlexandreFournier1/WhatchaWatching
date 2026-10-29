@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using WhatchaWatching.Common.Constants;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using WhatchaWatching.Infrastructure.Data.Entities;
 
@@ -17,6 +18,10 @@ public class UserEntityConfiguration : IEntityTypeConfiguration<UserEntity>
 
         builder.Property(u => u.ShowAdultContent)
             .IsRequired();
+
+        builder.Property(u => u.Country)
+            .HasMaxLength(CountryCatalog.CODE_LENGTH)
+            .IsRequired(false);
 
         builder.Property(u => u.UpdatedAt)
             .IsRequired();

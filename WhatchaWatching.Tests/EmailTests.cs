@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using WhatchaWatching.Infrastructure.Data;
 using WhatchaWatching.Infrastructure.Data.Entities;
 using WhatchaWatching.Services.Email;
+using WhatchaWatching.Services.Localization;
 
 namespace WhatchaWatching.Tests;
 
@@ -54,6 +55,7 @@ public class EmailTests
                 .Services
                 .AddSingleton<IEmailTransport>(Outbox)
                 .AddSingleton<NavigationManager, Site>()
+                .AddSingleton<ILocalizer, Localizer>()
                 .AddScoped<IEmailSender<UserEntity>, IdentityEmailSender>()
                 .AddScoped<IAccountEmailService, AccountEmailService>()
                 .BuildServiceProvider();
@@ -189,6 +191,7 @@ public class EmailTests
             .AddIdentityCore<UserEntity>().AddEntityFrameworkStores<ApplicationDbContext>().AddDefaultTokenProviders().Services
             .AddSingleton<IEmailTransport>(new Outbox { Fails = true })
             .AddSingleton<NavigationManager, Site>()
+            .AddSingleton<ILocalizer, Localizer>()
             .AddScoped<IEmailSender<UserEntity>, IdentityEmailSender>()
             .AddScoped<IAccountEmailService, AccountEmailService>();
 
@@ -216,7 +219,7 @@ public class EmailTests
     public async Task TheHtmlOfAMessage_EncodesTheLink()
     {
         var outbox = new Outbox();
-        var sender = new IdentityEmailSender(outbox);
+        var sender = new IdentityEmailSender(outbox, new Localizer());
 
         await sender.SendConfirmationLinkAsync(
             new UserEntity { UserName = "alex" }, "alex@example.test", "https://site.test/confirm?a=1&b=\"2\"<x>");

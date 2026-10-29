@@ -15,7 +15,9 @@ public static class DependencyInjection
         services.AddMiddleware(configuration);
 
         services.TryAddSingleton(TimeProvider.System);
+        services.AddMemoryCache();
         services.AddScoped<IMediaService, MediaService>();
+        services.AddScoped<IMediaExtrasService, MediaExtrasService>();
         services.AddScoped<IWatchListService, WatchListService>();
         services.AddScoped<ICustomAnimeService, CustomAnimeService>();
         services.AddScoped<IUserSettingsService, UserSettingsService>();

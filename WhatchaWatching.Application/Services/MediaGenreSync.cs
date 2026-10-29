@@ -31,6 +31,13 @@ internal static class MediaGenreSync
             known[genre.ExternalId] = created;
         }
 
+        // A provider id keeps its genre, but the name the site gives it can change (TMDB's "Science Fiction" became
+        // "Sci-Fi" to match MyAnimeList): the stored genre follows, and so do the titles that already carry it.
+        foreach (var genre in genres.Where(g => known[g.ExternalId].Name != g.Name))
+        {
+            known[genre.ExternalId].Name = genre.Name;
+        }
+
         var outdated = media.MediaGenres.Where(mg => !wantedIds.Contains(mg.Genre.ExternalId)).ToList();
         context.MediaGenres.RemoveRange(outdated);
 

@@ -15,4 +15,8 @@ public interface ITmdbClient
     /// <summary>Returns null when TMDB has no title of this type with this id.</summary>
     /// <exception cref="TmdbApiException">TMDB is not configured, cannot be reached or fails.</exception>
     Task<ExternalMediaDto?> GetAsync(MediaType type, int externalId, CancellationToken cancellationToken = default);
+
+    /// <summary>The trailer, the cast, the seasons and similar titles of a movie or a series. Null when TMDB has no such title.</summary>
+    /// <exception cref="TmdbApiException">TMDB is not configured, cannot be reached or fails.</exception>
+    Task<MediaExtrasDto?> GetExtrasAsync(MediaType type, int externalId, CancellationToken cancellationToken = default);
 }

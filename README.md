@@ -10,10 +10,11 @@ WhatchaWatching is a Blazor Web App (.NET 10) to keep a list of the anime you wa
 
 - **Anime, movies and TV series**: one switch in the header (Anime / Movies / TV series) sets the type for the whole site: the search, the list, the random pick and the title pages (`?type=anime|movie|tv`). The links and the search of the header keep the type.
 - **Search** by title: anime from Jikan, then AniList if Jikan is down; movies and series from [TMDB](https://www.themoviedb.org/). When the providers are down, the titles already saved on the site are searched, with a notice.
-- **Title page** (`/anime/{id}`, `/movie/{id}`, `/tv/{id}`): poster, summary, genres, episodes and seasons, duration, status, score, and **where to watch it** (streaming platforms: Jikan and AniList for anime, TMDB and JustWatch for the others, for the country in `Tmdb:WatchRegion`).
+- **Title page** (`/anime/{id}`, `/movie/{id}`, `/tv/{id}`): poster, summary, genres, episodes and seasons, duration, status, score, and **where to watch it** (streaming platforms: Jikan and AniList for anime, TMDB and JustWatch for the others, for the country each user picks in the account page).
 - **Watchlist ("My List")**: add and remove titles, filter by genre and episode duration, sort by date, title or duration. The list only holds what you still want to watch: no status, rating or notes.
 - **Random pick**: "Surprise Me" picks from the whole list, "Find me something like..." narrows it down by genre and duration first. It avoids repeating the previous pick.
 - **Add an anime by hand** (`/anime/new`) when the providers do not have it. It is private to you, limited to 200 per user, and removing it from your list deletes it.
+- **Languages**: English and French (footer switch, cookie, else the language of the browser); titles and synopses stay as the providers give them.
 - **Accounts** (ASP.NET Core Identity, cookies): sign up, log in, log out, email confirmation, password reset by email, password change, account deletion, and a privacy page. Searching is open to everyone; the list, the picker and the account page need an account.
 - **Adult content** is hidden by default. It can be turned on in **My account** (with a confirmation of being 18 or older); a switch next to the search and the random pick can then hide it again for the visit. Adult anime are flagged by the providers and carry an "18+" mark.
 - A **footer** with the credits, the data sources and the version of the site with the commit it was built from (for example `v0.3.0 (d386362)`).

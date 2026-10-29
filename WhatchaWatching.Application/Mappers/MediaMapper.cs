@@ -23,7 +23,10 @@ internal static class MediaMapper
         Seasons = media.SeasonCount,
         IsCustom = media.CreatedByUserId is not null,
         IsAdult = media.IsAdult,
-        StreamingLinks = media.StreamingLinks.OrderBy(l => l.Site).Select(l => new StreamingLinkDto(l.Site, l.Url)).ToList()
+        StreamingLinks = media.StreamingLinks
+            .OrderBy(l => l.Site)
+            .Select(l => new StreamingLinkDto(l.Site, l.Url) { Region = l.Region })
+            .ToList()
     };
 
     public static MediaSummaryDto ToSummary(ExternalMediaDto anime) => new(

@@ -226,17 +226,17 @@ public class MediaService(
             return;
         }
 
-        // A link is the pair (platform, address): TMDB gives every platform of a title the same address.
+        // A link is the triple (country, platform, address): TMDB gives every platform of a country the same address.
         var outdated = media.StreamingLinks
-            .Where(stored => !links.Any(l => l.Site == stored.Site && l.Url == stored.Url))
+            .Where(stored => !links.Any(l => l.Region == stored.Region && l.Site == stored.Site && l.Url == stored.Url))
             .ToList();
         context.StreamingLinks.RemoveRange(outdated);
 
         foreach (var link in links)
         {
-            if (!media.StreamingLinks.Any(s => s.Site == link.Site && s.Url == link.Url))
+            if (!media.StreamingLinks.Any(s => s.Region == link.Region && s.Site == link.Site && s.Url == link.Url))
             {
-                media.StreamingLinks.Add(new StreamingLinkEntity { Site = link.Site, Url = link.Url });
+                media.StreamingLinks.Add(new StreamingLinkEntity { Site = link.Site, Url = link.Url, Region = link.Region });
             }
         }
     }

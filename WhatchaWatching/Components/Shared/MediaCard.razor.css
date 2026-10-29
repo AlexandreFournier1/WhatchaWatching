@@ -24,9 +24,9 @@
 
 .info { display: grid; gap: .35rem; align-content: start; }
 
-h3 { font-size: 1rem; font-weight: 500; }
-h3 a { color: var(--text); }
-h3 a:hover { color: var(--accent); }
+h2 { font-size: 1rem; font-weight: 500; }
+h2 a { color: var(--text); }
+h2 a:hover { color: var(--accent); }
 
 .meta { color: var(--text-2); font-size: .875rem; }
 
@@ -39,7 +39,7 @@ h3 a:hover { color: var(--accent); }
 .featured { padding: 1.25rem; gap: 1.25rem; }
 .featured .head { flex-direction: row; gap: 1.25rem; }
 .featured .poster { flex: 0 0 160px; aspect-ratio: 1; }
-.featured h3 { font-size: 1.5rem; font-weight: 400; }
+.featured h2 { font-size: 1.5rem; font-weight: 400; }
 .featured .meta { font-size: 1rem; }
 
 @media (max-width: 480px) {
@@ -55,7 +55,7 @@ h3 a:hover { color: var(--accent); }
 
 .poster { transition: opacity .2s; }
 .media-card:hover .poster { opacity: .92; }
-h3 a { transition: color .15s; }
+h2 a { transition: color .15s; }
 
 .featured:hover { transform: none; box-shadow: none; border-color: var(--border); }
 

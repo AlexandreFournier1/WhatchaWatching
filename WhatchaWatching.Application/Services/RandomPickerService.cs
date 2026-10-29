@@ -23,6 +23,8 @@ public class RandomPickerService(
         var showAdult = await UserSettingsService.ShowsAdultContentAsync(context, userId, cancellationToken)
             && (filter?.IncludeAdult ?? true);
 
+        filter = await WatchListService.WithRegionAsync(context, userId, filter, cancellationToken);
+
         var matches = context.WatchListItems
             .AsNoTracking()
             .ForUser(userId)

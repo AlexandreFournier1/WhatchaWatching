@@ -17,9 +17,7 @@ public static class DependencyInjection
         services.TryAddSingleton(TimeProvider.System);
 
         // A missing token must not stop the site: anime keep working and TMDB calls report that it is unavailable.
-        services.AddSingleton(new TmdbOptions(
-            configuration["Tmdb:AccessToken"],
-            configuration["Tmdb:WatchRegion"] is { Length: > 0 } region ? region : ExternalApiConstants.TMDB_DEFAULT_WATCH_REGION));
+        services.AddSingleton(new TmdbOptions(configuration["Tmdb:AccessToken"]));
 
         services.AddHttpClient<ITmdbClient, TmdbClient>((provider, client) =>
             {

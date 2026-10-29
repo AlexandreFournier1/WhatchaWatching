@@ -4,21 +4,22 @@
 @using WhatchaWatching.Infrastructure.Data.Entities
 @using WhatchaWatching.Services.Email
 @inject UserManager<UserEntity> UserManager
+@inject ILocalizer L
 
-<PageTitle>Confirm your email - WhatchaWatching</PageTitle>
+<PageTitle>@L["Confirm your email"] - WhatchaWatching</PageTitle>
 
 <section class="auth">
-    <h1>Confirm your email</h1>
+    <h1>@L["Confirm your email"]</h1>
 
     @if (confirmed)
     {
-        <p class="notice" role="status">Your email address is confirmed. Thank you.</p>
-        <p class="switch"><a href="">Back to the site</a></p>
+        <p class="notice" role="status">@L["Your email address is confirmed. Thank you."]</p>
+        <p class="switch"><a href="">@L["Back to the site"]</a></p>
     }
     else
     {
-        <p class="validation-message" role="alert">This link is not valid or has expired.</p>
-        <p class="switch">You can ask for a new one from <a href="account">My account</a>.</p>
+        <p class="validation-message" role="alert">@L["This link is not valid or has expired."]</p>
+        <p class="switch">@L["You can ask for a new one from"] <a href="account">@L["My account"]</a>.</p>
     }
 </section>
 

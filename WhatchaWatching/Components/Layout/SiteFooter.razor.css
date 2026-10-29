@@ -43,3 +43,7 @@
 @media (max-width: 560px) {
     .tmdb-logo { justify-self: start; }
 }
+
+.languages { display: flex; gap: .75rem; }
+.languages a { color: var(--text-2); font-size: .85rem; }
+.languages a[aria-current="true"] { color: var(--text); font-weight: 500; }

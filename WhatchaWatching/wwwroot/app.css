@@ -304,3 +304,20 @@ a:hover { color: var(--accent-hover); }
 .type-tabs .tab:hover { background: var(--surface-hover); color: var(--text); }
 .type-tabs .tab.active { background: var(--accent); color: var(--text); }
 
+
+/* Out of sight until a keyboard user reaches it as the first stop of the page. */
+.skip-link {
+    position: absolute;
+    left: .75rem;
+    top: -4rem;
+    z-index: 100;
+    padding: .5rem .9rem;
+    border-radius: var(--radius-sm, 8px);
+    background: var(--accent);
+    color: var(--on-accent, #fff);
+    transition: top .15s;
+}
+
+.skip-link:focus { top: .75rem; }
+
+main:focus { outline: none; }

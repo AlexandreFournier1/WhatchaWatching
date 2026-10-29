@@ -83,6 +83,22 @@ public sealed class FakeTmdbClient : ITmdbClient
         return Task.FromResult(new PagedResultDto<ExternalMediaDto>(items, page, 1, items.Count));
     }
 
+    /// <summary>What the extras of any title are (empty by default); counts the calls.</summary>
+    public MediaExtrasDto Extras { get; set; } = MediaExtrasDto.Empty;
+
+    public int ExtrasCalls { get; private set; }
+
+    public Task<MediaExtrasDto?> GetExtrasAsync(MediaType type, int externalId, CancellationToken cancellationToken = default)
+    {
+        ExtrasCalls++;
+        if (Failure is not null)
+        {
+            throw Failure;
+        }
+
+        return Task.FromResult<MediaExtrasDto?>(_titles.ContainsKey((type, externalId)) ? Extras : null);
+    }
+
     public Task<ExternalMediaDto?> GetAsync(MediaType type, int externalId, CancellationToken cancellationToken = default)
     {
         GetCalls++;

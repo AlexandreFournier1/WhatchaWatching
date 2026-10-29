@@ -37,9 +37,9 @@ public class TmdbClientTests
         }
         """;
 
-    private static TmdbClient CreateClient(StubHttpMessageHandler handler, string? token = "token", string region = "FR") =>
+    private static TmdbClient CreateClient(StubHttpMessageHandler handler, string? token = "token") =>
         new(new HttpClient(handler) { BaseAddress = new Uri(ExternalApiConstants.TMDB_BASE_URL) },
-            new TmdbOptions(token, region));
+            new TmdbOptions(token));
 
     private static string Path(HttpRequestMessage request) =>
         request.RequestUri!.AbsolutePath.Split("/3/")[1];
@@ -65,7 +65,7 @@ public class TmdbClientTests
         Assert.Equal(8.2m, movie.Score);
         Assert.Null(movie.EpisodeCount);
         Assert.False(movie.IsAdult);
-        Assert.Equal(["Action", "Science Fiction"], movie.Genres.Select(g => g.Name));
+        Assert.Equal(["Action", "Sci-Fi"], movie.Genres.Select(g => g.Name));
     }
 
     [Fact]
@@ -83,7 +83,7 @@ public class TmdbClientTests
         Assert.Equal("Breaking Bad", show.Title);
         Assert.Equal("Breaking Bad VO", show.OriginalTitle);
         Assert.Equal(2008, show.Year);
-        Assert.Equal(["Drama", "Sci-Fi & Fantasy"], show.Genres.Select(g => g.Name));
+        Assert.Equal(["Drama", "Sci-Fi", "Fantasy"], show.Genres.Select(g => g.Name));
     }
 
     [Fact]
@@ -176,7 +176,7 @@ public class TmdbClientTests
     }
 
     [Fact]
-    public async Task Get_TvShow_MapsTheDetailsAndTheStreamingPlatformsOfTheRegion()
+    public async Task Get_TvShow_MapsTheDetailsAndAsksForThePlatforms()
     {
         var handler = StubHttpMessageHandler.Json(TvDetailsJson);
 
@@ -190,22 +190,25 @@ public class TmdbClientTests
         Assert.Equal(5, show.SeasonCount);
         Assert.Equal(47, show.EpisodeDurationMinutes);
         Assert.Equal(MediaStatus.Finished, show.Status);
-        Assert.Equal(["Netflix", "Prime Video"], show.StreamingLinks.Select(l => l.Site));
-        Assert.All(show.StreamingLinks, l => Assert.Equal("https://www.themoviedb.org/tv/1396/watch?locale=FR", l.Url));
     }
 
     [Fact]
-    public async Task Get_UsesTheConfiguredWatchRegion()
+    public async Task Get_KeepsThePlatformsOfEveryCountryOfTheCatalog_EachWithItsCountry()
     {
-        var show = await CreateClient(StubHttpMessageHandler.Json(TvDetailsJson), region: "US").GetAsync(MediaType.TVShow, 1396);
+        var show = await CreateClient(StubHttpMessageHandler.Json(TvDetailsJson)).GetAsync(MediaType.TVShow, 1396);
 
-        Assert.Equal(["Hulu"], show!.StreamingLinks.Select(l => l.Site));
+        Assert.Equal(
+            [("FR", "Netflix"), ("FR", "Prime Video"), ("US", "Hulu")],
+            show!.StreamingLinks.Select(l => (l.Region!, l.Site)));
+        Assert.All(show.StreamingLinks.Where(l => l.Region == "FR"), l => Assert.Equal("https://www.themoviedb.org/tv/1396/watch?locale=FR", l.Url));
     }
 
     [Fact]
-    public async Task Get_WhenNoPlatformServesTheRegion_HasNoStreamingLinks()
+    public async Task Get_LeavesOutTheCountriesOfTheCatalogDoesNotKnow()
     {
-        var show = await CreateClient(StubHttpMessageHandler.Json(TvDetailsJson), region: "JP").GetAsync(MediaType.TVShow, 1396);
+        var json = """{ "id": 1, "name": "X", "watch/providers": { "results": { "JP": { "link": "https://t.test/jp", "flatrate": [ { "provider_name": "Netflix" } ] } } } }""";
+
+        var show = await CreateClient(StubHttpMessageHandler.Json(json)).GetAsync(MediaType.TVShow, 1);
 
         Assert.Empty(show!.StreamingLinks);
     }
@@ -289,8 +292,8 @@ public class TmdbClientTests
         var handler = StubHttpMessageHandler.Json("{}");
         var client = CreateClient(handler, token: null);
 
-        await Assert.ThrowsAsync<TmdbApiException>(() => client.SearchAsync(MediaType.Movie, "x", 1));
-        await Assert.ThrowsAsync<TmdbApiException>(() => client.GetAsync(MediaType.Movie, 1));
+        await Assert.ThrowsAsync<TmdbNotConfiguredException>(() => client.SearchAsync(MediaType.Movie, "x", 1));
+        await Assert.ThrowsAsync<TmdbNotConfiguredException>(() => client.GetAsync(MediaType.Movie, 1));
         Assert.Empty(handler.Requests);
     }
 

@@ -27,4 +27,8 @@ internal record TmdbTitle(
     TmdbEpisode? LastEpisodeToAir,
     List<int>? GenreIds,
     List<TmdbGenre>? Genres,
-    [property: JsonPropertyName("watch/providers")] TmdbWatchProviders? WatchProviders);
+    [property: JsonPropertyName("watch/providers")] TmdbWatchProviders? WatchProviders,
+    TmdbVideos? Videos,
+    TmdbCredits? Credits,
+    TmdbSearchResponse? Recommendations,
+    List<TmdbSeason>? Seasons);

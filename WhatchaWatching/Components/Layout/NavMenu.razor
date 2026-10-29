@@ -1,12 +1,13 @@
 ﻿@implements IDisposable
 @inject NavigationManager Navigation
+@inject ILocalizer L
 
 <header class="topbar">
     <div class="topbar-inner">
         <a class="brand" href="@Link("")">WhatchaWatching</a>
 
         @* Nothing here needs the circuit: the login and register pages are rendered by the server, with this same bar. *@
-        <input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation" />
+        <input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="@L["Toggle navigation"]" />
         <label for="nav-toggle" class="icon-button menu-toggle">
             <Icon Name="menu" />
         </label>
@@ -17,19 +18,19 @@
             <MediaTypeTabs />
         }
 
-        <nav class="links" aria-label="Main">
-            <a class="nav-link @(Path == "" ? "active" : "")" href="@Link("")">Home</a>
-            <a class="nav-link @(Path == "my-list" ? "active" : "")" href="@Link("my-list")">My List</a>
+        <nav class="links" aria-label="@L["Main"]">
+            <a class="nav-link @(Path == "" ? "active" : "")" href="@Link("")">@L["Home"]</a>
+            <a class="nav-link @(Path == "my-list" ? "active" : "")" href="@Link("my-list")">@L["My List"]</a>
         </nav>
 
         <form class="search" role="search" action="search" method="get">
             <Icon Name="search" Size="16" />
             <input type="hidden" name="type" value="@MediaRoutes.Slug(Type)" />
-            <input type="search" name="q" placeholder="@($"Search {MediaRoutes.Label(Type).ToLowerInvariant()}...")" aria-label="@($"Search {MediaRoutes.Label(Type).ToLowerInvariant()}")" required />
+            <input type="search" name="q" placeholder="@($"{SearchLabel}...")" aria-label="@SearchLabel" required />
         </form>
 
         <details class="user">
-            <summary class="icon-button avatar" aria-label="User menu">
+            <summary class="icon-button avatar" aria-label="@L["User menu"]">
                 <Icon Name="user" />
             </summary>
 
@@ -37,15 +38,15 @@
                 <AuthorizeView>
                     <Authorized>
                         <p class="signed-in">@context.User.Identity?.Name</p>
-                        <a href="account">My account</a>
+                        <a href="account">@L["My account"]</a>
                         <form method="post" action="logout">
                             <AntiforgeryToken />
-                            <button type="submit">Log out</button>
+                            <button type="submit">@L["Log out"]</button>
                         </form>
                     </Authorized>
                     <NotAuthorized>
-                        <a href="login">Log in</a>
-                        <a href="register">Create account</a>
+                        <a href="login">@L["Log in"]</a>
+                        <a href="register">@L["Create account"]</a>
                     </NotAuthorized>
                 </AuthorizeView>
             </div>
@@ -55,6 +56,14 @@
 
 @code {
     private string Address => Navigation.ToBaseRelativePath(Navigation.Uri);
+
+    // One phrase per type: the word changes with the language.
+    private string SearchLabel => Type switch
+    {
+        MediaType.Movie => L["Search movies"],
+        MediaType.TVShow => L["Search TV series"],
+        _ => L["Search anime"]
+    };
 
     private string Path => MediaRoutes.PathOf(Address);
 

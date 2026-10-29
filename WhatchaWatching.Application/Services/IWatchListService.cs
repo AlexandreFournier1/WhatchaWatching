@@ -20,6 +20,10 @@ public interface IWatchListService
     Task<IReadOnlyList<string>> GetGenresAsync(
         int userId, MediaType? type = null, CancellationToken cancellationToken = default);
 
+    /// <summary>Names of the streaming platforms that offer the titles of the list, in the country of the user, sorted.</summary>
+    Task<IReadOnlyList<string>> GetPlatformsAsync(
+        int userId, MediaType? type = null, CancellationToken cancellationToken = default);
+
     /// <summary>Of the given provider ids, those of this type that are in the user's list.</summary>
     Task<IReadOnlySet<int>> GetListedIdsAsync(
         int userId, MediaType type, IReadOnlyCollection<int> externalIds, CancellationToken cancellationToken = default);

@@ -2,6 +2,7 @@
 @attribute [Authorize]
 @attribute [ExcludeFromInteractiveRouting]
 @using System.ComponentModel.DataAnnotations
+@using WhatchaWatching.Common.Constants
 @using Microsoft.AspNetCore.Identity
 @using WhatchaWatching.Infrastructure.Data.Entities
 @using WhatchaWatching.Services.Email
@@ -12,104 +13,113 @@
 @inject UserManager<UserEntity> UserManager
 @inject SignInManager<UserEntity> SignInManager
 @inject NavigationManager Navigation
+@inject ILocalizer L
 
-<PageTitle>My account - WhatchaWatching</PageTitle>
+<PageTitle>@L["My account"] - WhatchaWatching</PageTitle>
 
 <section class="auth">
-    <h1>My account</h1>
+    <h1>@L["My account"]</h1>
 
     <AuthorizeView>
         <div class="card form">
             <div class="field">
-                <label for="username">Username</label>
+                <label for="username">@L["Username"]</label>
                 <input id="username" class="input" type="text" readonly value="@context.User.Identity?.Name" />
             </div>
 
             <div class="field">
-                <label for="email">Email</label>
+                <label for="email">@L["Email"]</label>
                 <input id="email" class="input" type="email" readonly value="@context.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value" />
             </div>
 
             @if (emailConfirmed is false)
             {
                 <p class="notice" role="status">
-                    This email address is not confirmed yet. A confirmed address is the one a password reset is sent to
-                    with the most certainty.
+                    @L["This email address is not confirmed yet. A confirmed address is the one a password reset is sent to with the most certainty."]
                 </p>
 
                 <form method="post" @formname="resend-confirmation" @onsubmit="ResendConfirmationAsync">
                     <AntiforgeryToken />
-                    <button type="submit" class="btn btn-ghost">Send the confirmation email again</button>
+                    <button type="submit" class="btn btn-ghost">@L["Send the confirmation email again"]</button>
                 </form>
 
                 @if (confirmationSent is true)
                 {
-                    <p class="notice" role="status">A confirmation email is on its way. The link works for two hours.</p>
+                    <p class="notice" role="status">@L["A confirmation email is on its way. The link works for two hours."]</p>
                 }
                 else if (confirmationSent is false)
                 {
-                    <p class="validation-message" role="alert">The email could not be sent. Try again later.</p>
+                    <p class="validation-message" role="alert">@L["The email could not be sent. Try again later."]</p>
                 }
             }
 
             <form method="post" action="logout">
                 <AntiforgeryToken />
-                <button type="submit" class="btn btn-ghost">Log out</button>
+                <button type="submit" class="btn btn-ghost">@L["Log out"]</button>
             </form>
         </div>
     </AuthorizeView>
 
     <EditForm Model="Input" method="post" OnValidSubmit="SaveAsync" FormName="content-settings" class="card form">
-        <h2>Content</h2>
+        <h2>@L["Content"]</h2>
 
         <label class="remember">
-            <InputCheckbox @bind-Value="Input.ShowAdultContent" /> Show adult content (18+)
+            <InputCheckbox @bind-Value="Input.ShowAdultContent" /> @L["Show adult content (18+)"]
         </label>
         <p class="muted small">
-            Adult anime (hentai and the like) are hidden by default: they do not show up in searches, in your list or
-            in the random pick. By turning this on you confirm that you are at least 18 years old and that you are
-            allowed to see such content where you live.
+            @L["Adult anime (hentai and the like) are hidden by default: they do not show up in searches, in your list or in the random pick. By turning this on you confirm that you are at least 18 years old and that you are allowed to see such content where you live."]
         </p>
+
+        <div class="field">
+            <label for="country">@L["Country"]</label>
+            <InputSelect id="country" class="input" @bind-Value="Input.Country">
+                @foreach (var (countryCode, countryName) in CountryCatalog.All)
+                {
+                    <option value="@countryCode">@L[countryName]</option>
+                }
+            </InputSelect>
+            <small class="muted">@L["The streaming platforms of movies and TV series are shown for this country."]</small>
+        </div>
 
         @if (saved)
         {
-            <p class="notice" role="status">Saved.</p>
+            <p class="notice" role="status">@L["Saved."]</p>
         }
 
         @if (failed)
         {
-            <p class="validation-message" role="alert">The setting could not be saved. Try again in a moment.</p>
+            <p class="validation-message" role="alert">@L["The setting could not be saved. Try again in a moment."]</p>
         }
 
-        <button type="submit" class="btn">Save</button>
+        <button type="submit" class="btn">@L["Save"]</button>
     </EditForm>
 
     <EditForm Model="PasswordInput" method="post" OnValidSubmit="ChangePasswordAsync" FormName="change-password" class="card form">
         <DataAnnotationsValidator />
-        <h2>Password</h2>
+        <h2>@L["Password"]</h2>
 
         <div class="field">
-            <label for="current-password">Current password</label>
+            <label for="current-password">@L["Current password"]</label>
             <InputText id="current-password" type="password" class="input" autocomplete="current-password" @bind-Value="PasswordInput.CurrentPassword" />
-            <ValidationMessage For="() => PasswordInput.CurrentPassword" />
+            <LocalizedValidationMessage For="() => PasswordInput.CurrentPassword" />
         </div>
 
         <div class="field">
-            <label for="new-password">New password</label>
+            <label for="new-password">@L["New password"]</label>
             <InputText id="new-password" type="password" class="input" autocomplete="new-password" @bind-Value="PasswordInput.NewPassword" />
-            <small class="muted">At least 8 characters, including a digit.</small>
-            <ValidationMessage For="() => PasswordInput.NewPassword" />
+            <small class="muted">@L["At least 8 characters, including a digit."]</small>
+            <LocalizedValidationMessage For="() => PasswordInput.NewPassword" />
         </div>
 
         <div class="field">
-            <label for="confirm-password">Confirm the new password</label>
+            <label for="confirm-password">@L["Confirm the new password"]</label>
             <InputText id="confirm-password" type="password" class="input" autocomplete="new-password" @bind-Value="PasswordInput.ConfirmPassword" />
-            <ValidationMessage For="() => PasswordInput.ConfirmPassword" />
+            <LocalizedValidationMessage For="() => PasswordInput.ConfirmPassword" />
         </div>
 
         @if (passwordChanged)
         {
-            <p class="notice" role="status">Your password has changed. Your other sessions have been signed out.</p>
+            <p class="notice" role="status">@L["Your password has changed. Your other sessions have been signed out."]</p>
         }
 
         @foreach (var message in passwordErrors)
@@ -117,35 +127,34 @@
             <p class="validation-message" role="alert">@message</p>
         }
 
-        <button type="submit" class="btn">Change my password</button>
+        <button type="submit" class="btn">@L["Change my password"]</button>
     </EditForm>
 
     <EditForm Model="DeleteInput" method="post" OnValidSubmit="DeleteAsync" FormName="delete-account" class="card form">
         <DataAnnotationsValidator />
-        <h2>Delete my account</h2>
+        <h2>@L["Delete my account"]</h2>
 
         <p class="muted small">
-            This deletes your account, your list and the anime you added by hand, for good. Nothing can be recovered.
-            What the site keeps is described on the <a href="privacy">privacy page</a>.
+            @L["This deletes your account, your list and the anime you added by hand, for good. Nothing can be recovered."] @L["What the site keeps is described on the"] <a href="privacy">@L["privacy page"]</a>.
         </p>
 
         <div class="field">
-            <label for="delete-password">Your password</label>
+            <label for="delete-password">@L["Your password"]</label>
             <InputText id="delete-password" type="password" class="input" autocomplete="current-password" @bind-Value="DeleteInput.Password" />
-            <ValidationMessage For="() => DeleteInput.Password" />
+            <LocalizedValidationMessage For="() => DeleteInput.Password" />
         </div>
 
         <label class="remember">
-            <InputCheckbox @bind-Value="DeleteInput.Confirmed" /> I understand that this cannot be undone
+            <InputCheckbox @bind-Value="DeleteInput.Confirmed" /> @L["I understand that this cannot be undone"]
         </label>
-        <ValidationMessage For="() => DeleteInput.Confirmed" />
+        <LocalizedValidationMessage For="() => DeleteInput.Confirmed" />
 
         @if (deleteError is not null)
         {
             <p class="validation-message" role="alert">@deleteError</p>
         }
 
-        <button type="submit" class="btn btn-danger">Delete my account</button>
+        <button type="submit" class="btn btn-danger">@L["Delete my account"]</button>
     </EditForm>
 </section>
 
@@ -184,6 +193,7 @@
         if (!posted && await CurrentUser.GetUserIdAsync() is { } userId)
         {
             Input.ShowAdultContent = await Settings.ShowsAdultContentAsync(userId);
+            Input.Country = await Settings.GetCountryAsync(userId);
         }
 
         emailConfirmed = (await CurrentUserEntityAsync())?.EmailConfirmed;
@@ -207,6 +217,7 @@
         {
             var userId = await CurrentUser.GetUserIdAsync() ?? throw new InvalidOperationException("Not signed in.");
             await Settings.SetShowsAdultContentAsync(userId, Input.ShowAdultContent);
+            await Settings.SetCountryAsync(userId, Input.Country);
             saved = true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -221,7 +232,7 @@
         var user = await CurrentUserEntityAsync();
         if (user is null)
         {
-            passwordErrors = ["You are not signed in."];
+            passwordErrors = [L["You are not signed in."]];
             return;
         }
 
@@ -229,7 +240,7 @@
         if (!result.Succeeded)
         {
             passwordErrors = result.Errors
-                .Select(e => e.Code == nameof(IdentityErrorDescriber.PasswordMismatch) ? "The current password is wrong." : e.Description)
+                .Select(e => e.Code == nameof(IdentityErrorDescriber.PasswordMismatch) ? L["The current password is wrong."] : e.Description)
                 .ToList();
             return;
         }
@@ -244,7 +255,7 @@
         var user = await CurrentUserEntityAsync();
         if (user is null)
         {
-            deleteError = "You are not signed in.";
+            deleteError = L["You are not signed in."];
             return;
         }
 
@@ -252,13 +263,13 @@
         var check = await SignInManager.CheckPasswordSignInAsync(user, DeleteInput.Password, lockoutOnFailure: true);
         if (!check.Succeeded)
         {
-            deleteError = check.IsLockedOut ? "Too many attempts. Try again in a few minutes." : "The password is wrong.";
+            deleteError = check.IsLockedOut ? L["Too many attempts. Try again in a few minutes."] : L["The password is wrong."];
             return;
         }
 
         if (!await Accounts.DeleteAsync(user.Id))
         {
-            deleteError = "The account could not be deleted. Try again in a moment.";
+            deleteError = L["The account could not be deleted. Try again in a moment."];
             return;
         }
 
@@ -269,6 +280,8 @@
     private sealed class ContentSettings
     {
         public bool ShowAdultContent { get; set; }
+
+        public string Country { get; set; } = CountryCatalog.DEFAULT_CODE;
     }
 
     private sealed class PasswordForm

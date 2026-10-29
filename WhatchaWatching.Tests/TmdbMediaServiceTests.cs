@@ -281,4 +281,39 @@ public class TmdbMediaServiceTests
 
         Assert.Single(longOnes);
     }
+
+    [Fact]
+    public async Task Genres_WhoseNameChanged_AreRenamedWhenTheTitleIsRefreshed()
+    {
+        _tmdb.With(FakeTmdbClient.Movie(1, "Old", 100, (878, "Science Fiction")));
+        await _media.GetAsync(MediaType.Movie, 1);
+
+        _tmdb.With(FakeTmdbClient.Movie(1, "Old", 100, (878, "Sci-Fi")));
+        _time.Advance(TimeSpan.FromDays(8));
+        var movie = await _media.GetAsync(MediaType.Movie, 1);
+
+        Assert.Equal(["Sci-Fi"], movie!.Genres);
+        await using var context = _db.CreateDbContext();
+        Assert.Equal("Sci-Fi", Assert.Single(context.Genres).Name);
+    }
+
+    [Fact]
+    public async Task WhenTmdbIsNotSetUp_TheSearchSaysSoInsteadOfAnOutage()
+    {
+        _tmdb.Failure = new TmdbNotConfiguredException();
+
+        var exception = await Assert.ThrowsAsync<MediaProviderUnavailableException>(() => _media.SearchAsync(MediaType.Movie, "x", 1));
+
+        Assert.True(exception.NotConfigured);
+    }
+
+    [Fact]
+    public async Task WhenTmdbIsDown_TheSearchIsNotReportedAsNotSetUp()
+    {
+        _tmdb.Failure = new TmdbApiException("down");
+
+        var exception = await Assert.ThrowsAsync<MediaProviderUnavailableException>(() => _media.SearchAsync(MediaType.Movie, "x", 1));
+
+        Assert.False(exception.NotConfigured);
+    }
 }
