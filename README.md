@@ -4,7 +4,7 @@ WhatchaWatching is a Blazor Web App (.NET 10) to keep a list of the anime you wa
 
 **Live site:** [https://whatcha-watching.alwaysdata.net](https://whatcha-watching.alwaysdata.net)
 
-> The project is under construction. Email confirmation is not done yet.
+[![CI](https://github.com/AlexandreFournier1/WhatchaWatching/actions/workflows/ci.yml/badge.svg)](https://github.com/AlexandreFournier1/WhatchaWatching/actions/workflows/ci.yml)
 
 ## Features
 
@@ -25,7 +25,7 @@ WhatchaWatching is a Blazor Web App (.NET 10) to keep a list of the anime you wa
 - Entity Framework Core with MySQL (Pomelo provider)
 - Jikan API and AniList API (GraphQL) for anime data, with retries, short timeouts and an automatic fallback; TMDB API for movies and TV series
 - .NET Aspire for local orchestration
-- xUnit for tests
+- xUnit for tests, run with a secret scan on every push and pull request by GitHub Actions
 - Hosting and production database: AlwaysData
 
 ## Architecture
@@ -88,12 +88,20 @@ Secrets must not be committed. Provide them through user secrets or environment 
 | --- | --- |
 | `ConnectionStrings:DefaultConnection` | The MySQL connection string (injected by Aspire when it runs the database). |
 | `Database:ServerVersion` | Optional, for example `8.0.36-mysql`. Skips the version detection that connects to the database; without it a database outage breaks every page that uses a service. |
+| `Tmdb:AccessToken` | The TMDB "API Read Access Token". Without it the site starts, but movies and TV series are reported as unavailable. |
+| `Email:Host`, `Port`, `UserName`, `Password`, `From`, `FromName` | The mailbox that sends the confirmation and password reset links (STARTTLS, port 587). Without it nothing is sent. |
 
 ```bash
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "<value>" --project WhatchaWatching
 ```
 
-In production, the same settings are environment variables of the site (`ConnectionStrings__DefaultConnection`, `Database__ServerVersion`).
+In production, the same settings are environment variables of the site (`ConnectionStrings__DefaultConnection`, `Database__ServerVersion`, `Tmdb__AccessToken`, `Email__Host`...).
+
+## Continuous integration and secret scan
+
+`.github/workflows/ci.yml` runs on every push to `main` and every pull request: build and tests in Release, a check for vulnerable packages, and a [gitleaks](https://github.com/gitleaks/gitleaks) scan of the history. It does not deploy.
+
+Locally, git hooks in `.githooks/` run the same secret scan before each commit and push. On a new clone, install gitleaks and run `git config core.hooksPath .githooks` (see [docs/OPERATIONS.md](docs/OPERATIONS.md)).
 
 ## Deployment
 
@@ -107,4 +115,4 @@ When a release adds a migration, **apply the migration first, then deploy**: the
 
 ## Data sources
 
-Anime data comes from [Jikan](https://jikan.moe/) (an unofficial MyAnimeList API) and [AniList](https://anilist.co/). Streaming links point to the platforms' own pages; availability depends on the country.
+Anime data comes from [Jikan](https://jikan.moe/) (an unofficial MyAnimeList API) and [AniList](https://anilist.co/); movie and TV series data from [TMDB](https://www.themoviedb.org/), with streaming availability by JustWatch. Streaming links point to the platforms' own pages; availability depends on the country.

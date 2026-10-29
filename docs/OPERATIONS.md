@@ -62,6 +62,10 @@ If a hook blocks:
 
 `git diff --staged .` fails in the OneDrive folder of this project ("failed to stat '.'"), and `gitleaks git --staged` runs exactly that, so `.githooks/scan-secrets.sh` scans the staged content through a temporary copy instead.
 
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push to `main` and every pull request: restore, build and test in Release, a check that no package has a known vulnerability (`dotnet list package --vulnerable --include-transitive`), and a gitleaks scan of the whole history with `.gitleaks.toml`. It needs no secret and no database (the tests mock HTTP). It does not deploy: deploying and applying migrations stay manual. In the GitHub settings, protect `main` and require the `build-test` and `secrets` checks to make them binding.
+
 ## After a deploy
 
 - `curl -sI https://<site>/login` shows `strict-transport-security`, `content-security-policy`, `x-content-type-options`, `x-frame-options`, `referrer-policy` and `permissions-policy`, and the antiforgery `set-cookie` has `secure`.
