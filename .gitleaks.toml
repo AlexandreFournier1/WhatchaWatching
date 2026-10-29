@@ -1,0 +1,27 @@
+title = "WhatchaWatching"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "connection-string-password"
+description = "Password in a connection string"
+regex = '''(?i)[;"']\s*(?:password|pwd)\s*=\s*[^;"'\s{$][^;"'\s]{3,}'''
+keywords = ["password", "pwd"]
+
+[[rules]]
+id = "tmdb-access-token"
+description = "TMDB access token in configuration"
+regex = '''(?i)"?Tmdb(?::|"\s*:\s*\{[^}]*"?)AccessToken"?\s*[:=]\s*"?[A-Za-z0-9_\-\.]{20,}'''
+keywords = ["accesstoken"]
+
+[[rules]]
+id = "email-password"
+description = "Mailbox password in configuration"
+regex = '''(?i)"Password"\s*:\s*"[^"\s]{4,}"'''
+keywords = ["password"]
+
+[[allowlists]]
+description = "Fake credentials in tests and placeholders in docs"
+paths = ['''WhatchaWatching\.Tests/''']
+regexes = ['''\$ALWAYSDATA_API_TOKEN''']

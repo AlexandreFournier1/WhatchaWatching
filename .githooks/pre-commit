@@ -1,0 +1,15 @@
+#!/bin/sh
+dir=$(dirname "$0")
+
+# Files that hold secrets by design must never be committed.
+blocked=$(git diff --cached --name-only --diff-filter=ACMR | grep -Ei '(^|/)(appsettings\.Production.*\.json|\.env(\..*)?|secrets\.json)$')
+if [ -n "$blocked" ]; then
+  echo "Commit blocked: these files hold secrets and must not be committed:" >&2
+  echo "$blocked" >&2
+  exit 1
+fi
+
+sh "$dir/scan-secrets.sh" staged || {
+  echo "Commit blocked: gitleaks found a possible secret in the staged changes." >&2
+  exit 1
+}
