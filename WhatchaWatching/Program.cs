@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using WhatchaWatching.Application;
@@ -14,6 +15,8 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddApplication(builder.Configuration);
+
+builder.Services.Configure<ForwardedHeadersOptions>(ProxyHeaders.Configure);
 
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAuthentication(options =>
@@ -44,6 +47,9 @@ builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 builder.Services.AddScoped<AdultFilterState>();
 
 var app = builder.Build();
+
+// First, so that everything after it sees the scheme and address of the visitor, not the proxy's.
+app.UseForwardedHeaders();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
