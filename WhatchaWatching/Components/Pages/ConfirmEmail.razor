@@ -1,0 +1,43 @@
+@page "/confirm-email"
+@attribute [ExcludeFromInteractiveRouting]
+@using Microsoft.AspNetCore.Identity
+@using WhatchaWatching.Infrastructure.Data.Entities
+@using WhatchaWatching.Services.Email
+@inject UserManager<UserEntity> UserManager
+
+<PageTitle>Confirm your email - WhatchaWatching</PageTitle>
+
+<section class="auth">
+    <h1>Confirm your email</h1>
+
+    @if (confirmed)
+    {
+        <p class="notice" role="status">Your email address is confirmed. Thank you.</p>
+        <p class="switch"><a href="">Back to the site</a></p>
+    }
+    else
+    {
+        <p class="validation-message" role="alert">This link is not valid or has expired.</p>
+        <p class="switch">You can ask for a new one from <a href="account">My account</a>.</p>
+    }
+</section>
+
+@code {
+    private bool confirmed;
+
+    [SupplyParameterFromQuery]
+    private string? UserId { get; set; }
+
+    [SupplyParameterFromQuery]
+    private string? Code { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!TokenCodec.TryDecode(Code, out var token) || UserId is null || await UserManager.FindByIdAsync(UserId) is not { } user)
+        {
+            return;
+        }
+
+        confirmed = (await UserManager.ConfirmEmailAsync(user, token)).Succeeded;
+    }
+}

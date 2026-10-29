@@ -1,8 +1,17 @@
 @page "/account"
 @attribute [Authorize]
 @attribute [ExcludeFromInteractiveRouting]
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@using WhatchaWatching.Infrastructure.Data.Entities
+@using WhatchaWatching.Services.Email
 @inject IUserSettingsService Settings
 @inject ICurrentUser CurrentUser
+@inject IAccountService Accounts
+@inject IAccountEmailService AccountEmail
+@inject UserManager<UserEntity> UserManager
+@inject SignInManager<UserEntity> SignInManager
+@inject NavigationManager Navigation
 
 <PageTitle>My account - WhatchaWatching</PageTitle>
 
@@ -20,6 +29,28 @@
                 <label for="email">Email</label>
                 <input id="email" class="input" type="email" readonly value="@context.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value" />
             </div>
+
+            @if (emailConfirmed is false)
+            {
+                <p class="notice" role="status">
+                    This email address is not confirmed yet. A confirmed address is the one a password reset is sent to
+                    with the most certainty.
+                </p>
+
+                <form method="post" @formname="resend-confirmation" @onsubmit="ResendConfirmationAsync">
+                    <AntiforgeryToken />
+                    <button type="submit" class="btn btn-ghost">Send the confirmation email again</button>
+                </form>
+
+                @if (confirmationSent is true)
+                {
+                    <p class="notice" role="status">A confirmation email is on its way. The link works for two hours.</p>
+                }
+                else if (confirmationSent is false)
+                {
+                    <p class="validation-message" role="alert">The email could not be sent. Try again later.</p>
+                }
+            }
 
             <form method="post" action="logout">
                 <AntiforgeryToken />
@@ -52,28 +83,119 @@
 
         <button type="submit" class="btn">Save</button>
     </EditForm>
+
+    <EditForm Model="PasswordInput" method="post" OnValidSubmit="ChangePasswordAsync" FormName="change-password" class="card form">
+        <DataAnnotationsValidator />
+        <h2>Password</h2>
+
+        <div class="field">
+            <label for="current-password">Current password</label>
+            <InputText id="current-password" type="password" class="input" autocomplete="current-password" @bind-Value="PasswordInput.CurrentPassword" />
+            <ValidationMessage For="() => PasswordInput.CurrentPassword" />
+        </div>
+
+        <div class="field">
+            <label for="new-password">New password</label>
+            <InputText id="new-password" type="password" class="input" autocomplete="new-password" @bind-Value="PasswordInput.NewPassword" />
+            <small class="muted">At least 8 characters, including a digit.</small>
+            <ValidationMessage For="() => PasswordInput.NewPassword" />
+        </div>
+
+        <div class="field">
+            <label for="confirm-password">Confirm the new password</label>
+            <InputText id="confirm-password" type="password" class="input" autocomplete="new-password" @bind-Value="PasswordInput.ConfirmPassword" />
+            <ValidationMessage For="() => PasswordInput.ConfirmPassword" />
+        </div>
+
+        @if (passwordChanged)
+        {
+            <p class="notice" role="status">Your password has changed. Your other sessions have been signed out.</p>
+        }
+
+        @foreach (var message in passwordErrors)
+        {
+            <p class="validation-message" role="alert">@message</p>
+        }
+
+        <button type="submit" class="btn">Change my password</button>
+    </EditForm>
+
+    <EditForm Model="DeleteInput" method="post" OnValidSubmit="DeleteAsync" FormName="delete-account" class="card form">
+        <DataAnnotationsValidator />
+        <h2>Delete my account</h2>
+
+        <p class="muted small">
+            This deletes your account, your list and the anime you added by hand, for good. Nothing can be recovered.
+            What the site keeps is described on the <a href="privacy">privacy page</a>.
+        </p>
+
+        <div class="field">
+            <label for="delete-password">Your password</label>
+            <InputText id="delete-password" type="password" class="input" autocomplete="current-password" @bind-Value="DeleteInput.Password" />
+            <ValidationMessage For="() => DeleteInput.Password" />
+        </div>
+
+        <label class="remember">
+            <InputCheckbox @bind-Value="DeleteInput.Confirmed" /> I understand that this cannot be undone
+        </label>
+        <ValidationMessage For="() => DeleteInput.Confirmed" />
+
+        @if (deleteError is not null)
+        {
+            <p class="validation-message" role="alert">@deleteError</p>
+        }
+
+        <button type="submit" class="btn btn-danger">Delete my account</button>
+    </EditForm>
 </section>
 
 @code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = default!;
+
     private bool saved;
     private bool failed;
+    private bool? emailConfirmed;
+    private bool? confirmationSent;
+    private bool passwordChanged;
+    private List<string> passwordErrors = [];
+    private string? deleteError;
 
-    [SupplyParameterFromForm]
+    [SupplyParameterFromForm(FormName = "content-settings")]
     private ContentSettings Input { get; set; } = default!;
+
+    [SupplyParameterFromForm(FormName = "change-password")]
+    private PasswordForm PasswordInput { get; set; } = default!;
+
+    [SupplyParameterFromForm(FormName = "delete-account")]
+    private DeleteForm DeleteInput { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
         // After a post the form has already filled Input: the stored value must not replace what was just sent.
         var posted = Input is not null;
 
-        // The model exists before the first await: Blazor renders the page as soon as the component waits, and the form
-        // cannot be rendered without its model.
+        // The models exist before the first await: Blazor renders the page as soon as the component waits, and the
+        // forms cannot be rendered without their model.
         Input ??= new ContentSettings();
+        PasswordInput ??= new PasswordForm();
+        DeleteInput ??= new DeleteForm();
 
         if (!posted && await CurrentUser.GetUserIdAsync() is { } userId)
         {
             Input.ShowAdultContent = await Settings.ShowsAdultContentAsync(userId);
         }
+
+        emailConfirmed = (await CurrentUserEntityAsync())?.EmailConfirmed;
+    }
+
+    private async Task<UserEntity?> CurrentUserEntityAsync() =>
+        await UserManager.GetUserAsync((await AuthenticationState).User);
+
+    private async Task ResendConfirmationAsync()
+    {
+        var user = await CurrentUserEntityAsync();
+        confirmationSent = user is not null && await AccountEmail.SendConfirmationAsync(user);
     }
 
     private async Task SaveAsync()
@@ -93,8 +215,81 @@
         }
     }
 
+    private async Task ChangePasswordAsync()
+    {
+        passwordErrors = [];
+        var user = await CurrentUserEntityAsync();
+        if (user is null)
+        {
+            passwordErrors = ["You are not signed in."];
+            return;
+        }
+
+        var result = await UserManager.ChangePasswordAsync(user, PasswordInput.CurrentPassword, PasswordInput.NewPassword);
+        if (!result.Succeeded)
+        {
+            passwordErrors = result.Errors
+                .Select(e => e.Code == nameof(IdentityErrorDescriber.PasswordMismatch) ? "The current password is wrong." : e.Description)
+                .ToList();
+            return;
+        }
+
+        // The stamp changed: this session gets the new one, every other one is no longer valid.
+        await SignInManager.RefreshSignInAsync(user);
+        passwordChanged = true;
+    }
+
+    private async Task DeleteAsync()
+    {
+        var user = await CurrentUserEntityAsync();
+        if (user is null)
+        {
+            deleteError = "You are not signed in.";
+            return;
+        }
+
+        // A wrong password counts toward the lockout, like on the login page.
+        var check = await SignInManager.CheckPasswordSignInAsync(user, DeleteInput.Password, lockoutOnFailure: true);
+        if (!check.Succeeded)
+        {
+            deleteError = check.IsLockedOut ? "Too many attempts. Try again in a few minutes." : "The password is wrong.";
+            return;
+        }
+
+        if (!await Accounts.DeleteAsync(user.Id))
+        {
+            deleteError = "The account could not be deleted. Try again in a moment.";
+            return;
+        }
+
+        await SignInManager.SignOutAsync();
+        Navigation.NavigateTo("/");
+    }
+
     private sealed class ContentSettings
     {
         public bool ShowAdultContent { get; set; }
+    }
+
+    private sealed class PasswordForm
+    {
+        [Required(ErrorMessage = "Enter your current password.")]
+        public string CurrentPassword { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Choose a new password.")]
+        public string NewPassword { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Type the new password again.")]
+        [Compare(nameof(NewPassword), ErrorMessage = "The passwords do not match.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+
+    private sealed class DeleteForm
+    {
+        [Required(ErrorMessage = "Enter your password.")]
+        public string Password { get; set; } = string.Empty;
+
+        [Range(typeof(bool), "true", "true", ErrorMessage = "Tick the box to confirm.")]
+        public bool Confirmed { get; set; }
     }
 }

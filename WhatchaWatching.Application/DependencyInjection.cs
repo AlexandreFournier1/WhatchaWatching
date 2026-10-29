@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<IWatchListService, WatchListService>();
         services.AddScoped<ICustomAnimeService, CustomAnimeService>();
         services.AddScoped<IUserSettingsService, UserSettingsService>();
+        services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<IRandomPickerService, RandomPickerService>();
 
         return services;

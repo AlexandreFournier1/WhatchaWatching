@@ -3,9 +3,11 @@
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Identity
 @using WhatchaWatching.Infrastructure.Data.Entities
+@using WhatchaWatching.Services.Email
 @inject SignInManager<UserEntity> SignInManager
 @inject UserManager<UserEntity> UserManager
 @inject NavigationManager Navigation
+@inject IAccountEmailService AccountEmail
 
 <PageTitle>Create account - WhatchaWatching</PageTitle>
 
@@ -75,6 +77,9 @@
             errors = result.Errors.Select(e => e.Description).ToList();
             return;
         }
+
+        // The address is confirmed through the link of this email; not being able to send it must not stop the sign-up.
+        await AccountEmail.SendConfirmationAsync(user);
 
         await SignInManager.SignInAsync(user, isPersistent: false);
         Navigation.NavigateTo(LocalUrl.Normalize(ReturnUrl));

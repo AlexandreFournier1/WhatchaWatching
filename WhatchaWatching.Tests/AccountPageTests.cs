@@ -2,6 +2,11 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using WhatchaWatching.Infrastructure.Data;
+using WhatchaWatching.Infrastructure.Data.Entities;
+using WhatchaWatching.Services.Email;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WhatchaWatching.Application.Services;
@@ -22,6 +27,18 @@ public class AccountPageTests
 
         public Task SetShowsAdultContentAsync(int userId, bool value, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
+    }
+
+    private sealed class NoAccounts : IAccountService
+    {
+        public Task<bool> DeleteAsync(int userId, CancellationToken cancellationToken = default) => Task.FromResult(false);
+    }
+
+    private sealed class NoEmails : IAccountEmailService
+    {
+        public Task<bool> SendConfirmationAsync(UserEntity user) => Task.FromResult(true);
+
+        public Task<bool> SendPasswordResetAsync(UserEntity user) => Task.FromResult(true);
     }
 
     private sealed class SlowCurrentUser : ICurrentUser
@@ -69,6 +86,13 @@ public class AccountPageTests
         services.AddSingleton<NavigationManager, TestNavigationManager>();
         services.AddSingleton<IUserSettingsService>(new SlowSettings(showsAdult));
         services.AddSingleton<ICurrentUser, SlowCurrentUser>();
+        services.AddSingleton<IAccountService, NoAccounts>();
+        services.AddSingleton<IAccountEmailService, NoEmails>();
+        services.AddDataProtection();
+        services.AddDbContext<ApplicationDbContext>(options => options.UseInMemoryDatabase(Guid.NewGuid().ToString()));
+        services.AddHttpContextAccessor();
+        services.AddAuthentication(IdentityConstants.ApplicationScheme).AddIdentityCookies();
+        services.AddIdentityCore<UserEntity>().AddEntityFrameworkStores<ApplicationDbContext>().AddSignInManager().AddDefaultTokenProviders();
 
         await using var provider = services.BuildServiceProvider();
         await using var renderer = new HtmlRenderer(provider, provider.GetRequiredService<ILoggerFactory>());
@@ -97,5 +121,26 @@ public class AccountPageTests
 
         Assert.Contains("checked", on);
         Assert.DoesNotContain("checked", off);
+    }
+
+    [Fact]
+    public async Task Account_OffersToChangeThePasswordAndToDeleteTheAccount()
+    {
+        var html = await RenderAccountAsync(showsAdult: false);
+
+        Assert.Contains("Change my password", html);
+        Assert.Contains("Current password", html);
+        Assert.Contains("Delete my account", html);
+        Assert.Contains("href=\"privacy\"", html);
+    }
+
+    [Fact]
+    public async Task Account_AsksForThePasswordAndAConfirmationBeforeDeleting()
+    {
+        var html = await RenderAccountAsync(showsAdult: false);
+
+        Assert.Contains("id=\"delete-password\"", html);
+        Assert.Contains("I understand that this cannot be undone", html);
+        Assert.Contains("btn btn-danger", html);
     }
 }

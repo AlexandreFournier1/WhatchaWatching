@@ -1,0 +1,8 @@
+.privacy { max-width: 46rem; display: grid; gap: .75rem; }
+
+.privacy h2 { margin-top: 1.25rem; font-size: 1.25rem; font-weight: 500; }
+
+.privacy ul { margin: 0; padding-left: 1.25rem; display: grid; gap: .5rem; }
+
+.privacy p, .privacy li { color: var(--text-2); }
+.privacy strong { color: var(--text); font-weight: 500; }
