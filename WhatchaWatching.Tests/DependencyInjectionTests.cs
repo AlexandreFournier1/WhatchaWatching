@@ -8,6 +8,7 @@ using WhatchaWatching.Infrastructure.Data;
 using WhatchaWatching.Middleware;
 using WhatchaWatching.Middleware.AniList;
 using WhatchaWatching.Middleware.Jikan;
+using WhatchaWatching.Middleware.Tmdb;
 
 namespace WhatchaWatching.Tests;
 
@@ -50,6 +51,19 @@ public class DependencyInjectionTests
 
         Assert.IsType<JikanClient>(provider.GetRequiredService<IJikanClient>());
         Assert.IsType<AniListClient>(provider.GetRequiredService<IAniListClient>());
+    }
+
+    [Fact]
+    public void AddApplication_RegistersTheTmdbClient_EvenWithoutAnAccessToken()
+    {
+        var services = new ServiceCollection()
+            .AddApplication(BuildConfiguration("Server=localhost;Database=whatchawatching"));
+
+        using var provider = services.BuildServiceProvider();
+
+        Assert.IsType<TmdbClient>(provider.GetRequiredService<ITmdbClient>());
+        Assert.False(provider.GetRequiredService<TmdbOptions>().IsConfigured);
+        Assert.Equal(ExternalApiConstants.TMDB_DEFAULT_WATCH_REGION, provider.GetRequiredService<TmdbOptions>().WatchRegion);
     }
 
     [Fact]

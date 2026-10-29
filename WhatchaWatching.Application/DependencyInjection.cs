@@ -12,7 +12,7 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddInfrastructure(configuration);
-        services.AddMiddleware();
+        services.AddMiddleware(configuration);
 
         services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<IAnimeService, AnimeService>();

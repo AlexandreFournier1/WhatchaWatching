@@ -1,17 +1,36 @@
+using System.Net.Http.Headers;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Http.Resilience;
 using WhatchaWatching.Common.Constants;
 using WhatchaWatching.Middleware.AniList;
 using WhatchaWatching.Middleware.Jikan;
+using WhatchaWatching.Middleware.Tmdb;
 
 namespace WhatchaWatching.Middleware;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddMiddleware(this IServiceCollection services)
+    public static IServiceCollection AddMiddleware(this IServiceCollection services, IConfiguration configuration)
     {
         services.TryAddSingleton(TimeProvider.System);
+
+        // A missing token must not stop the site: anime keep working and TMDB calls report that it is unavailable.
+        services.AddSingleton(new TmdbOptions(
+            configuration["Tmdb:AccessToken"],
+            configuration["Tmdb:WatchRegion"] is { Length: > 0 } region ? region : ExternalApiConstants.TMDB_DEFAULT_WATCH_REGION));
+
+        services.AddHttpClient<ITmdbClient, TmdbClient>((provider, client) =>
+            {
+                client.BaseAddress = new Uri(ExternalApiConstants.TMDB_BASE_URL);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("WhatchaWatching");
+                if (provider.GetRequiredService<TmdbOptions>().AccessToken is { Length: > 0 } token)
+                {
+                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                }
+            })
+            .AddStandardResilienceHandler(ConfigureResilience);
 
         services.AddHttpClient<IJikanClient, JikanClient>(client =>
             {
