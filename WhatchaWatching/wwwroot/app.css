@@ -288,7 +288,6 @@ a:hover { color: var(--accent-hover); }
     display: inline-flex;
     flex-wrap: wrap;
     gap: .25rem;
-    margin-bottom: 1.5rem;
     padding: .25rem;
     border: 1px solid var(--border);
     border-radius: 999px;
@@ -296,7 +295,7 @@ a:hover { color: var(--accent-hover); }
 }
 
 .type-tabs .tab {
-    padding: .35rem 1rem;
+    padding: .3rem .9rem;
     border-radius: 999px;
     color: var(--text-2);
     font-size: .95rem;
@@ -305,4 +304,3 @@ a:hover { color: var(--accent-hover); }
 .type-tabs .tab:hover { background: var(--surface-hover); color: var(--text); }
 .type-tabs .tab.active { background: var(--accent); color: var(--text); }
 
-.chip-type { border-color: var(--accent-2); color: var(--accent-2); }

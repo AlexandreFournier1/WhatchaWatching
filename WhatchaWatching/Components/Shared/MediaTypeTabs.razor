@@ -1,14 +1,10 @@
-<nav class="type-tabs" aria-label="Type of title">
-    @if (AllowAll)
-    {
-        <a class="tab @(Selected is null ? "active" : "")" href="@UrlFor(null)"
-           aria-current="@(Selected is null ? "page" : null)">All</a>
-    }
+@implements IDisposable
 
+<nav class="type-tabs" aria-label="Type of title">
     @foreach (var type in MediaRoutes.Types)
     {
-        <a class="tab @(Selected == type ? "active" : "")" href="@UrlFor(type)"
-           aria-current="@(Selected == type ? "page" : null)">@MediaRoutes.Label(type)</a>
+        <a class="tab @(type == Current ? "active" : "")" href="@UrlFor(type)"
+           aria-current="@(type == Current ? "page" : null)">@MediaRoutes.Label(type)</a>
     }
 </nav>
 
@@ -16,18 +12,35 @@
     [Inject]
     private NavigationManager Navigation { get; set; } = default!;
 
-    /// <summary>The type being shown; null means all of them (only when <see cref="AllowAll"/>).</summary>
-    [Parameter]
-    public MediaType? Selected { get; set; }
+    private string Address => Navigation.ToBaseRelativePath(Navigation.Uri);
 
-    /// <summary>Adds an "All" tab, for the list and the random pick.</summary>
-    [Parameter]
-    public bool AllowAll { get; set; }
+    // The switch of the header follows the address, so that it is the same on every page and for a shared link.
+    private MediaType Current => MediaRoutes.FromAddress(Address);
 
-    // Plain links, so that the tabs also work in the prerendered page. A change of type starts again from page one.
-    private string UrlFor(MediaType? type) => Navigation.GetUriWithQueryParameters(new Dictionary<string, object?>
+    protected override void OnInitialized() => Navigation.LocationChanged += OnLocationChanged;
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) =>
+        InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+
+    // Plain links, so that the switch also works in the prerendered page. A change of type starts again from page one.
+    // The links are relative to the site: an absolute one takes the scheme the server sees, which is http behind a proxy.
+    private string UrlFor(MediaType type)
     {
-        ["type"] = type is { } chosen ? MediaRoutes.Slug(chosen) : null,
-        ["page"] = null
-    });
+        // The page of a title has no other type to show: the switch leads to the home page of that type.
+        if (MediaRoutes.IsTitlePage(MediaRoutes.PathOf(Address)))
+        {
+            return $"./?type={MediaRoutes.Slug(type)}";
+        }
+
+        var url = Navigation.GetUriWithQueryParameters(new Dictionary<string, object?>
+        {
+            ["type"] = MediaRoutes.Slug(type),
+            ["page"] = null
+        });
+
+        // The home page is the empty path, and an empty link would keep the current query.
+        return Navigation.ToBaseRelativePath(url) is { Length: > 0 } relative ? relative : "./";
+    }
 }

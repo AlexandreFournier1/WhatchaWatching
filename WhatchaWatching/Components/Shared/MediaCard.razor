@@ -13,11 +13,6 @@
             <h3><a href="@MediaRoutes.DetailUrl(Media.Type, Media.Id)">@Media.Title</a></h3>
             <p class="meta">@MediaDisplay.Duration(Media)</p>
 
-            @if (ShowType)
-            {
-                <span class="chip chip-type">@MediaRoutes.Badge(Media.Type)</span>
-            }
-
             @if (Media.IsAdult)
             {
                 <span class="chip chip-adult">18+</span>
@@ -58,10 +53,6 @@
     /// <summary>Large horizontal layout used for the pick on the home page.</summary>
     [Parameter]
     public bool Featured { get; set; }
-
-    /// <summary>Shows a badge with the type, for lists that mix anime, movies and series.</summary>
-    [Parameter]
-    public bool ShowType { get; set; }
 
     /// <summary>Buttons shown at the bottom of the card.</summary>
     [Parameter]

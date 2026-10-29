@@ -159,3 +159,11 @@
 
     .nav-toggle:checked ~ .links { display: flex; }
 }
+
+/* The type switch sits between the brand and the links; on a phone it takes a row of its own, above the search. */
+@media (max-width: 720px) {
+    .topbar-inner ::deep .type-tabs { order: 4; flex-basis: 100%; }
+    .topbar-inner ::deep .type-tabs .tab { flex: 1; text-align: center; }
+    .search { order: 5; }
+    .links { order: 6; }
+}

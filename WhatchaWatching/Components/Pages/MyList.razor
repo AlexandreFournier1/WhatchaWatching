@@ -12,14 +12,12 @@
         @if (!loading && !failed)
         {
             <p class="muted fade-in">@items.Count @(IsFiltered ? "matching" : "to watch")</p>
-            @if (Type is null or MediaType.Anime)
+            @if (Type == MediaType.Anime)
             {
                 <p class="fade-in"><a href="anime/new">Add an anime by hand</a></p>
             }
         }
     </header>
-
-    <MediaTypeTabs Selected="Type" AllowAll="true" />
 
     @if (loading)
     {
@@ -38,8 +36,8 @@
     }
     else if (items.Count == 0 && !IsFiltered)
     {
-        <EmptyState Title="@(Type is null ? "Your list is empty" : $"No {MediaRoutes.Label(Type.Value).ToLowerInvariant()} in your list")" Message="Search for something and add it to your list.">
-            <a class="btn" href="@(Type is { } chosen ? MediaRoutes.SearchUrl(chosen) : "search")">Find something to add</a>
+        <EmptyState Title="@($"No {MediaRoutes.Label(Type).ToLowerInvariant()} in your list")" Message="Search for something and add it to your list.">
+            <a class="btn" href="@MediaRoutes.SearchUrl(Type)">Find something to add</a>
         </EmptyState>
     }
     else
@@ -59,7 +57,7 @@
             <div class="media-grid @(busy ? "is-busy" : "")" aria-busy="@(busy ? "true" : "false")">
                 @foreach (var anime in items)
                 {
-                    <MediaCard Media="anime" ShowType="@(Type is null)" @key="(anime.Type, anime.Id)">
+                    <MediaCard Media="anime" @key="(anime.Type, anime.Id)">
                         <button type="button" class="btn btn-danger btn-sm" title="@(anime.IsCustom ? "Remove and delete this anime" : "Remove from my list")"
                                 disabled="@removing.Contains(Key(anime))" aria-busy="@(removing.Contains(Key(anime)) ? "true" : "false")"
                                 @onclick="() => RemoveAsync(anime)">
@@ -99,8 +97,8 @@
     [SupplyParameterFromQuery(Name = "type")]
     private string? TypeSlug { get; set; }
 
-    // All the types unless the address asks for one.
-    private MediaType? Type => MediaRoutes.FromSlug(TypeSlug);
+    // Anime unless the address asks for movies or series (the type switch of the header sets it).
+    private MediaType Type => MediaRoutes.FromSlug(TypeSlug) ?? MediaRoutes.DefaultType;
 
     protected override async Task OnParametersSetAsync()
     {

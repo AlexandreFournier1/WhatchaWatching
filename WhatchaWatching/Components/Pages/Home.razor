@@ -12,8 +12,6 @@
 <section class="home">
     <h1>Whatcha watching today ?</h1>
 
-    <MediaTypeTabs Selected="Type" AllowAll="true" />
-
     <div class="actions">
         <button type="button" class="btn" disabled="@loading" @onclick="Surprise">Surprise Me</button>
         <button type="button" class="btn" aria-expanded="@(showConditions ? "true" : "false")"
@@ -61,14 +59,14 @@
                 case State.Nothing:
                     <EmptyState Title="Nothing to pick from"
                                 Message="Your list has nothing matching this. Add some titles, or change the conditions.">
-                        <a class="btn" href="@(Type is { } chosen ? MediaRoutes.SearchUrl(chosen) : "search")">Find something to add</a>
+                        <a class="btn" href="@MediaRoutes.SearchUrl(Type)">Find something to add</a>
                     </EmptyState>
                     break;
 
                 case State.Picked when pick is not null:
                     <h2 class="fade-in">Today you will be watching this :</h2>
 
-                    <MediaCard Media="pick" Featured="true" ShowType="@(Type is null)">
+                    <MediaCard Media="pick" Featured="true">
                         <a class="btn btn-ghost" href="@MediaRoutes.DetailUrl(pick.Type, pick.Id)">View details</a>
                         <button type="button" class="btn btn-ghost" @onclick="Pick">Pick another</button>
                     </MediaCard>
@@ -93,8 +91,8 @@
     [SupplyParameterFromQuery(Name = "type")]
     private string? TypeSlug { get; set; }
 
-    // Picks among all the types unless the address asks for one.
-    private MediaType? Type => MediaRoutes.FromSlug(TypeSlug);
+    // Anime unless the address asks for movies or series (the type switch of the header sets it).
+    private MediaType Type => MediaRoutes.FromSlug(TypeSlug) ?? MediaRoutes.DefaultType;
 
     private MediaType? shownType;
 

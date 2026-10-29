@@ -8,7 +8,7 @@ WhatchaWatching is a Blazor Web App (.NET 10) to keep a list of the anime you wa
 
 ## Features
 
-- **Anime, movies and TV series**: tabs (Anime / Movies / TV series) pick the type on the search, the list and the random pick (`?type=anime|movie|tv`); the list and the pick also offer "All".
+- **Anime, movies and TV series**: one switch in the header (Anime / Movies / TV series) sets the type for the whole site: the search, the list, the random pick and the title pages (`?type=anime|movie|tv`). The links and the search of the header keep the type.
 - **Search** by title: anime from Jikan, then AniList if Jikan is down; movies and series from [TMDB](https://www.themoviedb.org/). When the providers are down, the titles already saved on the site are searched, with a notice.
 - **Title page** (`/anime/{id}`, `/movie/{id}`, `/tv/{id}`): poster, summary, genres, episodes and seasons, duration, status, score, and **where to watch it** (streaming platforms: Jikan and AniList for anime, TMDB and JustWatch for the others, for the country in `Tmdb:WatchRegion`).
 - **Watchlist ("My List")**: add and remove titles, filter by genre and episode duration, sort by date, title or duration. The list only holds what you still want to watch: no status, rating or notes.

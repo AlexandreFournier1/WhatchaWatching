@@ -1,6 +1,9 @@
-﻿<header class="topbar">
+﻿@implements IDisposable
+@inject NavigationManager Navigation
+
+<header class="topbar">
     <div class="topbar-inner">
-        <a class="brand" href="">WhatchaWatching</a>
+        <a class="brand" href="@Link("")">WhatchaWatching</a>
 
         @* Nothing here needs the circuit: the login and register pages are rendered by the server, with this same bar. *@
         <input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation" />
@@ -8,14 +11,21 @@
             <Icon Name="menu" />
         </label>
 
+        @* One switch for the whole site: the pages, the links below and the search all follow the type it shows. *@
+        @if (MediaRoutes.FollowsType(Path))
+        {
+            <MediaTypeTabs />
+        }
+
         <nav class="links" aria-label="Main">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Home</NavLink>
-            <NavLink class="nav-link" href="my-list">My List</NavLink>
+            <a class="nav-link @(Path == "" ? "active" : "")" href="@Link("")">Home</a>
+            <a class="nav-link @(Path == "my-list" ? "active" : "")" href="@Link("my-list")">My List</a>
         </nav>
 
         <form class="search" role="search" action="search" method="get">
             <Icon Name="search" Size="16" />
-            <input type="search" name="q" placeholder="Search something..." aria-label="Search anime, movies and TV series" required />
+            <input type="hidden" name="type" value="@MediaRoutes.Slug(Type)" />
+            <input type="search" name="q" placeholder="@($"Search {MediaRoutes.Label(Type).ToLowerInvariant()}...")" aria-label="@($"Search {MediaRoutes.Label(Type).ToLowerInvariant()}")" required />
         </form>
 
         <details class="user">
@@ -42,3 +52,28 @@
         </details>
     </div>
 </header>
+
+@code {
+    private string Address => Navigation.ToBaseRelativePath(Navigation.Uri);
+
+    private string Path => MediaRoutes.PathOf(Address);
+
+    // The type of the page being shown, which the links and the search of the bar keep.
+    private MediaType Type => MediaRoutes.FromAddress(Address);
+
+    protected override void OnInitialized() => Navigation.LocationChanged += OnLocationChanged;
+
+    // The bar belongs to the layout, which stays when the page changes: it has to follow the address itself.
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) =>
+        InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+
+    // The default type needs no mark in the address.
+    private string Link(string path)
+    {
+        var target = path.Length == 0 ? "./" : path;
+
+        return Type == MediaRoutes.DefaultType ? target : $"{target}?type={MediaRoutes.Slug(Type)}";
+    }
+}
